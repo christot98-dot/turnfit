@@ -24,4 +24,4 @@ print(s)
 import shutil
 shutil.copytree('android-res','android/app/src/main/res',dirs_exist_ok=True)
 bg='android/app/src/main/res/values/ic_launcher_background.xml'
-open(bg,'w').write('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#09090B</color>\n</resources>\n')
+open(bg,'w').write('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#0A0A0A</color>\n</resources>\n')
