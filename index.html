@@ -151,6 +151,13 @@ nav button{font-size:11.5px}nav button.on{color:var(--red2)}nav button.on svg{fi
 .pbact{display:flex;gap:8px;margin-top:12px}.pbact .btn{flex:1}
 .pbhome{width:100%;display:flex;align-items:center;gap:10px;background:none;border:0;border-bottom:1px solid var(--line);color:#fff;font:inherit;text-align:left;padding:13px 2px}
 .pbhome:last-child{border:0}.pbl{flex:1;min-width:0;font-weight:700;font-size:16px}.pbl small{display:block;color:var(--mut);font-weight:400;font-size:12px}.pbhome b{font-size:18px;white-space:nowrap}
+
+/* rest timer v2 */
+.rest{display:block!important;padding:10px 12px;text-align:left}
+.rt-row{display:flex;align-items:center;gap:7px}.rt-row .t{flex:1;text-align:center;font-size:32px;min-width:0;line-height:1}
+.rb{border:1px solid var(--line);background:#ffffff0f;color:#fff;border-radius:12px;padding:10px 9px;font-weight:700;font-size:13px;white-space:nowrap}
+.rb.main{background:linear-gradient(160deg,var(--red2),var(--red));border:0;min-width:90px}
+.rest .chips{margin-top:8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.rest .chips button{flex:1 0 auto;padding:8px 12px}
 </style></head><body>
 <header>
  <button class="hb" data-act="go" data-p="settings" aria-label="Menu"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
@@ -201,8 +208,11 @@ nav button{font-size:11.5px}nav button.on{color:var(--red2)}nav button.on svg{fi
   <div class="card"><h2>History</h2><div id="sessions"></div></div>
  </div>
  <div id="s-work" style="display:none">
-  <div class="card rest"><h2>Rest timer</h2><div class="t" id="restT">00:00</div><div class="chips" id="restChips"></div>
-   <button class="btn sec" data-act="restStop" style="margin-top:8px;width:100%">Stop</button></div>
+  <div class="card rest">
+   <div class="rt-row"><button class="rb" data-act="restAdj" data-d="-15">−15</button><div class="t" id="restT">01:30</div><button class="rb" data-act="restAdj" data-d="15">+15</button><button class="rb main" id="restPlay" data-act="restToggle">▶ Start</button><button class="rb" data-act="restReset" aria-label="Reset">↺</button></div>
+   <div class="chips" id="restChips"></div>
+   <div id="restCustom" style="display:none;margin-top:10px"><div style="display:flex;gap:8px;align-items:center"><input type="number" inputmode="numeric" id="rcM" placeholder="min" style="width:76px;text-align:center"><b>:</b><input type="number" inputmode="numeric" id="rcS" placeholder="sec" style="width:76px;text-align:center"><button class="btn sm" data-act="restCustomStart" style="flex:1">Start</button></div></div>
+  </div>
   <div class="card" id="pbCard"><div class="sync"><h3>🏆 Personal Bests</h3><button class="btn sm" data-act="pbNew">+ Add lift</button></div>
    <div id="pbAdd" style="display:none;margin-bottom:10px">
     <input id="pbName" list="pbNames" placeholder="Lift name (e.g. Bench Press)">
@@ -278,7 +288,7 @@ const FIELDS=[
  ['weight','Weight (kg)'],['bf','Body fat %']];
 const BASE=9;
 const unit=k=>k==='weight'?'kg':k==='bf'?'%':'cm';
-let D={sessions:[],active:null,meas:[],steps:{},goal:{visits:4,steps:10000},workouts:[],pbs:[],cur:null,rest:90,restEnd:0,name:'Christo',lastSync:0};
+let D={sessions:[],active:null,meas:[],steps:{},goal:{visits:4,steps:10000},workouts:[],pbs:[],cur:null,rest:90,restEnd:0,restPaused:null,restCustom:[],name:'Christo',lastSync:0};
 try{const s=JSON.parse(localStorage.getItem('argosa')||'null');if(s)D=Object.assign(D,s);D.goal=Object.assign({visits:4,steps:10000},D.goal)}catch(e){}
 const save=()=>{try{localStorage.setItem('argosa',JSON.stringify(D))}catch(e){toast('Could not save: '+e.message,1)}};
 const nf=n=>String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,',');
@@ -488,11 +498,21 @@ function showSeg(n){$$('.seg button').forEach(b=>b.classList.toggle('on',b.datas
 /* ---------- rest timer ---------- */
 let ac,restDone=true;
 const beep=()=>{try{ac=ac||new AudioContext();[0,.25,.5].forEach(t=>{const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=880;g.gain.value=.3;o.start(ac.currentTime+t);o.stop(ac.currentTime+t+.15)});navigator.vibrate&&navigator.vibrate([300,100,300])}catch(e){}};
-function startRest(sec){D.restEnd=Date.now()+sec*1000;D.rest=sec;save();restDone=false;drawRest()}
-function drawRest(){const l=D.restEnd-Date.now();$('#restT').textContent=l>0?`${pad(Math.floor(l/6e4))}:${pad(Math.ceil(l/1e3)%60)}`:'00:00';
- if(D.restEnd&&l<=0&&!restDone){restDone=true;beep()}
- const h=[60,90,120,180].map(n=>`<button class="btn ${n===D.rest?'':'sec'}" data-act="rest" data-n="${n}">${n>=120?n/60+'m':n+'s'}</button>`).join('');
- if($('#restChips').dataset.h!==h){$('#restChips').innerHTML=h;$('#restChips').dataset.h=h}}
+const mmss=ms=>{const t=Math.max(0,Math.ceil(ms/1000));return `${pad(Math.floor(t/60))}:${pad(t%60)}`};
+const fmtChip=n=>n>=120&&n%60===0?n/60+'m':n<60?n+'s':n%60===0?n/60+'m':Math.floor(n/60)+':'+pad(n%60);
+function startRest(sec){D.rest=sec;D.restEnd=Date.now()+sec*1000;D.restPaused=null;save();restDone=false;drawRest()}
+function restState(){return D.restPaused!=null?'paused':D.restEnd>Date.now()?'running':'idle'}
+function drawRest(){
+ const st=restState();let l;
+ if(st==='paused')l=D.restPaused;else if(st==='running')l=D.restEnd-Date.now();else l=D.rest*1000;
+ if(D.restEnd&&st==='idle'&&!restDone){restDone=true;D.restEnd=0;save();beep();toast('Rest over — go lift! 💪')}
+ const t=$('#restT'),txt=mmss(l);if(t.textContent!==txt)t.textContent=txt;
+ t.style.opacity=st==='idle'?.55:1;
+ const pl=$('#restPlay'),lab=st==='running'?'⏸ Pause':st==='paused'?'▶ Resume':'▶ Start';if(pl.textContent!==lab)pl.textContent=lab;
+ const customs=(D.restCustom||[]).filter(n=>![60,90,120,180].includes(n));
+ const h=[60,90,120,180,...customs].map(n=>`<button class="btn ${n===D.rest?'':'sec'}" data-act="rest" data-n="${n}">${fmtChip(n)}</button>`).join('')+`<button class="btn sec" data-act="restCustomToggle" aria-label="Custom time">＋</button>`;
+ if($('#restChips').dataset.h!==h){$('#restChips').innerHTML=h;$('#restChips').dataset.h=h}
+}
 setInterval(()=>safe(()=>{{const t=D.active?fmt(Date.now()-D.active):'00:00:00';$('#clock').textContent=t;$('#clock2').textContent=t}drawRest()}),500);
 
 /* ---------- backup ---------- */
@@ -512,7 +532,22 @@ const A={
  gymToggle:()=>{if(D.active){D.sessions.unshift({start:D.active,end:Date.now()});D.active=null;toast('Session saved ✓')}else D.active=Date.now();save();render()},
  delSession:t=>{if(confirm('Delete session?')){D.sessions.splice(+t.dataset.i,1);save();render()}},
  rest:t=>startRest(+t.dataset.n),
- restStop:()=>{D.restEnd=0;restDone=true;save();drawRest()},
+ restToggle:()=>{const st=restState();
+  if(st==='running'){D.restPaused=Math.max(1000,D.restEnd-Date.now());D.restEnd=0;restDone=true}
+  else if(st==='paused'){D.restEnd=Date.now()+D.restPaused;D.restPaused=null;restDone=false}
+  else{D.restEnd=Date.now()+D.rest*1000;D.restPaused=null;restDone=false}
+  save();drawRest()},
+ restReset:()=>{D.restEnd=0;D.restPaused=null;restDone=true;save();drawRest()},
+ restAdj:t=>{const d=+t.dataset.d*1000,st=restState();
+  if(st==='running')D.restEnd=Math.max(Date.now()+1000,D.restEnd+d);
+  else if(st==='paused')D.restPaused=Math.max(1000,D.restPaused+d);
+  else D.rest=Math.max(15,D.rest+d/1000);
+  save();drawRest()},
+ restCustomToggle:()=>{const c=$('#restCustom');c.style.display=c.style.display==='none'?'block':'none';if(c.style.display==='block')$('#rcM').focus()},
+ restCustomStart:()=>{const sec=(parseInt($('#rcM').value)||0)*60+(parseInt($('#rcS').value)||0);
+  if(sec<5||sec>3600)return toast('Enter a time between 0:05 and 60:00',1);
+  if(![60,90,120,180].includes(sec)){D.restCustom=[sec,...(D.restCustom||[]).filter(n=>n!==sec)].slice(0,2)}
+  $('#rcM').value='';$('#rcS').value='';$('#restCustom').style.display='none';startRest(sec)},
  exAdd:()=>{const n=$('#exName').value.trim();if(!n)return toast('Type an exercise name first',1);D.cur=D.cur||{id:Date.now(),date:today(),ex:[]};D.cur.ex.push({n,s:[]});$('#exName').value='';save();renderLift()},
  addSet:t=>{const i=+t.dataset.i,w=parseFloat($('#w'+i).value),r=parseInt($('#r'+i).value);if(isNaN(w)||isNaN(r))return toast('Enter kg and reps',1);D.cur.ex[i].s.push({w,r});pbCheck(D.cur.ex[i].n,w,r);save();renderLift();renderPB();renderHomePBs();startRest(D.rest)},
  delSet:t=>{D.cur.ex[+t.dataset.i].s.splice(+t.dataset.j,1);save();renderLift()},
