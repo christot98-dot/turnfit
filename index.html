@@ -207,6 +207,24 @@ input.sw{width:26px!important;height:26px;accent-color:#ff3b30}
 .pxr .x{background:none;border:0;color:var(--mut);font-size:16px;padding:6px}
 .rest .t{cursor:pointer}
 #pkSearch{margin-bottom:10px}#pkList .pickrow:first-child{border-top:1px solid var(--line)}
+
+/* plan rows: inline time per day */
+.prow2{display:flex;align-items:center;gap:8px}
+.pdb{flex:1;min-width:0;display:flex;align-items:center;gap:10px;background:none;border:0;color:#fff;font:inherit;text-align:left;padding:11px 2px}
+.pdn{display:flex;flex-direction:column;min-width:58px}.pdn b{font-size:17px}.pdn small{color:var(--mut);font-size:12px;font-weight:400;white-space:nowrap}
+.pdf{flex:1;font-weight:800;font-size:16px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdb .chev{flex:none}
+.ptime{width:132px!important;flex:none;text-align:center;padding:10px 4px;font-size:15px;font-weight:700}
+.ptime::-webkit-calendar-picker-indicator{display:none}
+.ptime.dim{opacity:.45}
+/* excel-style table */
+.xl{border:1px solid #3a3a41;border-radius:14px;overflow:hidden}
+.xr{display:grid;grid-template-columns:1.25fr 1fr;width:100%;background:none;border:0;border-bottom:1px solid #2c2c33;color:#fff;font:inherit;text-align:left;padding:0}
+.xr:last-child{border-bottom:0}.xr:nth-child(odd):not(.xh){background:#ffffff08}
+.xr>div{padding:11px 12px}.xr>div+div{border-left:1px solid #2c2c33;text-align:right}
+.xr.xh{background:#ffffff16;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);font-weight:800}
+.xr.sel{box-shadow:inset 3px 0 0 var(--red2);background:#e5191f1a!important}
+.xr b{font-size:17px}
 </style></head><body>
 <header>
  <button class="hb" data-act="go" data-p="settings" aria-label="Menu"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
@@ -271,14 +289,10 @@ input.sw{width:26px!important;height:26px;accent-color:#ff3b30}
 <!-- ============ PLAN ============ -->
 <section id="p-plan" class="page">
  <div class="card"><div class="sync"><button class="rb" data-act="planWk" data-d="-1" aria-label="Previous week">‹</button><h3 id="planWkTitle">This week</h3><button class="rb" data-act="planWk" data-d="1" aria-label="Next week">›</button></div>
-  <div class="mut" style="margin-bottom:6px">Tap a day to set its focus, time and exercises.</div>
+  <div class="mut" style="margin:2px 0 8px">Changes apply to</div>
+  <div class="scope" id="planScopeBar"><button data-act="planScope" data-s="regular">Every week</button><button data-act="planScope" data-s="week">This week only</button></div>
+  <div class="mut" style="margin:10px 0 2px">Set each day's gym time on the right. Tap a day for its focus and exercises.</div>
   <div id="planDays"></div></div>
- <div class="card"><h2>Regular gym times</h2>
-  <div class="row"><label>Weekdays<small>Mon – Fri</small></label><input type="time" id="tmWk" data-tm="wk" style="width:130px"></div>
-  <div class="row"><label>Saturday</label><input type="time" id="tmSat" data-tm="6" style="width:130px"></div>
-  <div class="row"><label>Sunday</label><input type="time" id="tmSun" data-tm="0" style="width:130px"></div>
-  <div class="mut" style="margin-top:8px">To change one day only, tap it above.</div>
- </div>
 </section>
 
 <!-- ============ LIFTS ============ -->
@@ -299,6 +313,7 @@ input.sw{width:26px!important;height:26px;accent-color:#ff3b30}
   <input type="file" id="phIn" accept="image/*" multiple hidden><div class="thumbs" id="phPend"></div>
   <textarea id="mNote" rows="2" placeholder="Note (optional)" style="margin-top:10px"></textarea>
   <button class="btn" data-act="mSave" style="width:100%;margin-top:12px">Save entry</button></div>
+ <div class="card"><h2>Current measurements</h2><div class="xl" id="mTable"></div><div class="mut" style="margin-top:8px">Tap a row to see its trend.</div></div>
  <div class="card"><h2>Trend</h2><select id="mPick"></select><div id="mChart"></div><div id="mDelta" class="mut"></div></div>
  <div class="card"><h2>Compare photos</h2><div style="display:flex;gap:8px"><select id="cA"></select><select id="cB"></select></div><div class="cmp" id="cmp"></div></div>
  <div class="card"><h2>Entries</h2><div id="mList"></div></div>
@@ -460,13 +475,13 @@ function setOv(date,f){const k=dkey(date);if(D.plan[date.getDay()]===f)delete D.
 function planChanged(){save();render();scheduleSoon()}
 function applyFocus(date,f,scope){if(scope==='regular'){D.plan[date.getDay()]=f;delete D.planOv[dkey(date)]}else setOv(date,f);planChanged()}
 function setTime(date,v,scope){const k=dkey(date),dow=date.getDay();if(!v)return;
- if(scope==='regular'){D.dayTime[dow]=v;delete D.timeOv[k]}else if(D.dayTime[dow]===v)delete D.timeOv[k];else D.timeOv[k]=v;planChanged()}
+ if(scope==='regular'){D.dayTime[dow]=v;delete D.timeOv[k]}else if(D.dayTime[dow]===v)delete D.timeOv[k];else{D.timeOv[k]=v;toast('Changed for this week only. Pick “Every week” above to make it permanent.')}planChanged()}
 function swapDays(a,b,scope){const fa=focusFor(a),fb=focusFor(b);
  if(scope==='regular'){D.plan[a.getDay()]=fb;D.plan[b.getDay()]=fa;delete D.planOv[dkey(a)];delete D.planOv[dkey(b)]}else{setOv(a,fb);setOv(b,fa)}planChanged()}
 function pushForward(dates,idx){const S=dates.slice(idx).map(focusFor);if(S[0]==='rest')return null;let dropped=null;
  const ri=S.findIndex((f,i)=>i>0&&f==='rest');if(ri>0)S.splice(ri,1);else dropped=S.pop();
  ['rest',...S].forEach((f,i)=>setOv(dates[idx+i],f));planChanged();return dropped}
-let planOff=0,planOpen=null,planScope='week';
+let planOff=0,planOpen=null,planScope='regular';
 
 /* =====================================================================
    PERSONAL BESTS
@@ -563,13 +578,12 @@ function renderPlan(){
  const el=$('#planDays');if(!el)return;
  const dates=weekDates(planOff),fmtD=d=>d.toLocaleDateString([],{day:'numeric',month:'short'});
  $('#planWkTitle').textContent=planOff===0?'This week':planOff===1?'Next week':planOff===-1?'Last week':fmtD(dates[0])+' – '+fmtD(dates[6]);
+ $$('#planScopeBar button').forEach(b=>b.classList.toggle('on',b.dataset.s===planScope));
  const tk=today();
  el.innerHTML=dates.map((d,i)=>{const f=focusFor(d),k=dkey(d),ov=D.planOv[k]!=null||D.timeOv[k]!=null,open=planOpen===i,isT=k===tk;let det='';
   if(open){const F=FOCUS[f],pl=D.focusPlan[f]||[];
    det=`<div class="pbdet">
    <div class="pbh">Focus</div><select data-pf="${i}">${Object.entries(FOCUS).map(([kk,v])=>`<option value="${kk}"${f===kk?' selected':''}>${v.s}</option>`).join('')}</select>
-   ${f==='rest'?'':`<div class="pbh">Gym time</div><input type="time" data-ptime="${i}" value="${timeFor(d)}" style="width:150px">`}
-   <div class="pbh">Apply changes to</div><div class="scope"><button class="${planScope==='week'?'on':''}" data-act="planScope" data-s="week">This week only</button><button class="${planScope==='regular'?'on':''}" data-act="planScope" data-s="regular">Every ${DAYS[d.getDay()]}</button></div>
    ${f==='rest'?'':`<div class="pbh">Exercises · every ${F.l.toLowerCase()}</div>
     ${pl.length?pl.map((p,j)=>`<div class="pxr"><div class="pxm"><button data-act="pxMove" data-f="${f}" data-i="${j}" data-d="-1" aria-label="Up">↑</button><button data-act="pxMove" data-f="${f}" data-i="${j}" data-d="1" aria-label="Down">↓</button></div><div class="pxb"><span class="pxn">${esc(p.n)}</span><input class="pxreps" data-prep="${f}|${j}" value="${esc(p.reps||'')}" placeholder="reps e.g. 8-10"></div><span class="stp"><button data-act="pxSets" data-f="${f}" data-i="${j}" data-d="-1">−</button><b>${p.sets||3}</b><button data-act="pxSets" data-f="${f}" data-i="${j}" data-d="1">+</button></span><button class="x" data-act="pxDel" data-f="${f}" data-i="${j}" aria-label="Remove">✕</button></div>`).join(''):'<div class="mut">No exercises yet.</div>'}
     <button class="btn sec sm" data-act="pxAdd" data-f="${f}" style="width:100%;margin-top:8px">＋ Add exercise</button>`}
@@ -577,8 +591,7 @@ function renderPlan(){
    <div style="display:flex;gap:8px"><select id="ps${i}">${dates.map((o,j)=>j===i?'':`<option value="${j}">${DAYS[o.getDay()]} · ${F_S(focusFor(o))}</option>`).join('')}</select><button class="btn sm" data-act="planSwap" data-i="${i}">Swap</button></div>
    <div class="pbact"><button class="btn sec sm" data-act="planRest" data-i="${i}">Make it a rest day</button>${f!=='rest'?`<button class="btn sec sm" data-act="planPush" data-i="${i}">Skip &amp; push week forward</button>`:''}</div>
    ${ov?`<button class="linkbtn" data-act="planReset" data-i="${i}">Reset to my regular plan</button>`:''}</div>`}
-  return `<div class="pbrow${open?' open':''}${isT?' todayrow':''}"><button class="pbsum" data-act="planDay" data-i="${i}"><span class="pbn">${DAYS[d.getDay()]} <small class="mut">${fmtD(d)}${isT?' · today':''}</small></span><span class="pbv${f==='rest'?' restv':''}">${F_S(f)}${f==='rest'?'':' · '+timeFor(d)}${ov?' •':''}</span><span class="chev">›</span></button>${det}</div>`}).join('');
- $('#tmWk').value=D.dayTime[1];$('#tmSat').value=D.dayTime[6];$('#tmSun').value=D.dayTime[0];
+  return `<div class="pbrow${open?' open':''}${isT?' todayrow':''}"><div class="prow2"><button class="pdb" data-act="planDay" data-i="${i}"><span class="pdn"><b>${DAYS[d.getDay()].slice(0,3)}</b><small>${fmtD(d)}${isT?' · today':''}</small></span><span class="pdf${f==='rest'?' restv':''}">${F_S(f)}${ov?' •':''}</span><span class="chev">›</span></button><input type="time" class="ptime${f==='rest'?' dim':''}" data-ptime="${i}" value="${timeFor(d)}" aria-label="Gym time ${DAYS[d.getDay()]}"></div>${det}</div>`}).join('');
 }
 
 /* =====================================================================
@@ -625,7 +638,13 @@ function buildForm(){
  $('#mDate').value=today()}
 async function drawCmp(){const g=async id=>((await pget(+id))||[])[0];const [x,y]=[await g($('#cA').value),await g($('#cB').value)];
  $('#cmp').innerHTML=[x,y].map(p=>p?`<img src="${p}" data-act="viewSrc">`:'<div class="mut">No photo</div>').join('')}
+function renderMTable(){
+ const rows=FIELDS.map(([k,l],i)=>{let cur=null,prev=null;for(let j=D.meas.length-1;j>=0;j--){if(D.meas[j][k]!=null){if(cur==null)cur=D.meas[j][k];else{prev=D.meas[j][k];break}}}return{k,l,cur,prev,main:i<BASE}}).filter(r=>r.main||r.cur!=null);
+ const sel=$('#mPick').value;
+ $('#mTable').innerHTML='<div class="xr xh"><div>Measurement</div><div>Current</div></div>'+rows.map(r=>{const d=r.cur!=null&&r.prev!=null?+(r.cur-r.prev).toFixed(1):null;
+  return `<button class="xr${sel===r.k?' sel':''}" data-act="mRow" data-k="${r.k}"><div>${r.l}</div><div>${r.cur!=null?`<b>${r.cur}</b> ${unit(r.k)}${d?` <span class="d ${d>0?'up':'dn'}">${d>0?'+':''}${d}</span>`:''}`:'<span class="mut">—</span>'}</div></button>`}).join('')}
 function renderBody(){
+ renderMTable();
  const k=$('#mPick').value||'torso',u=unit(k);
  const pts=D.meas.filter(e=>e[k]!=null).map(e=>[+new Date(e.date),e[k]]);
  $('#mChart').innerHTML=line(pts);
@@ -891,6 +910,7 @@ const A={
   save();render()},
  /* --- body --- */
  mToggle:()=>{const c=$('#mCard'),open=c.style.display==='none';c.style.display=open?'block':'none';$('#mToggleBtn').textContent=open?'Close':'＋ Log measurements';if(open)c.scrollIntoView({behavior:'smooth',block:'start'})},
+ mRow:t=>{$('#mPick').value=t.dataset.k;renderBody();$('#mChart').scrollIntoView({behavior:'smooth',block:'center'})},
  phBtn:()=>$('#phIn').click(),
  phRemove:t=>{pend.splice(+t.dataset.i,1);drawPend()},
  mSave:async()=>{
@@ -926,7 +946,6 @@ document.addEventListener('change',e=>{const t=e.target,ds=t.dataset||{};
  if(ds.cfg){let v=t.type==='checkbox'?t.checked:t.value;if(ds.cfg==='remind'||ds.cfg==='weekStart')v=+v;D[ds.cfg]=v;if(ds.cfg==='notifOn'&&v){enableReminders();save();render();return}planChanged();return}
  if(ds.pf!==undefined){applyFocus(weekDates(planOff)[+ds.pf],t.value,planScope);return}
  if(ds.ptime!==undefined){setTime(weekDates(planOff)[+ds.ptime],t.value,planScope);return}
- if(ds.tm){const v=t.value;if(!v)return;if(ds.tm==='wk')[1,2,3,4,5].forEach(d=>D.dayTime[d]=v);else D.dayTime[+ds.tm]=v;planChanged();return}
  if(ds.prep){const [f,j]=ds.prep.split('|');D.focusPlan[f][+j].reps=t.value.trim();save();return}
  if(ds.mn){D.libMuscle[norm(ds.mn)]=t.value;save();return}
  const k=ds.set;if(!k)return;
