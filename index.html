@@ -103,6 +103,17 @@ nav{left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom));padding:
 nav button{font-size:11.5px}nav button.on{color:var(--red2)}nav button.on svg{filter:drop-shadow(0 0 6px #e5191f)}
 .big{border-radius:26px}.seg{border-radius:18px}.btn{border-radius:16px}
 .row input,input,select,textarea{background:#0b0b0d;border:1px solid #37373d}
+
+/* ===== v3.1 fixes ===== */
+.weekrow{display:block;position:relative;margin:14px 0 44px}
+.wkcard{position:relative;z-index:2;width:62%;min-height:178px}
+.wkimg{position:absolute;z-index:1;right:-12px;top:-4px;bottom:-46px;width:52%;border:0;border-radius:0;background:none;box-shadow:none;overflow:visible}
+.wkimg::before{right:6%;top:6%;height:56%;width:44px;opacity:.85;box-shadow:none}
+.wkimg::after{inset:0;background:url(man.webp) 62% 100%/auto 100% no-repeat;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 36%),linear-gradient(0deg,transparent 0,#000 26%);-webkit-mask-composite:source-in;mask-image:linear-gradient(90deg,transparent 0,#000 36%),linear-gradient(0deg,transparent 0,#000 26%);mask-composite:intersect}
+.quick{grid-template-columns:repeat(3,minmax(0,1fr));position:relative;z-index:2}
+.quick button{padding:12px 10px;overflow:hidden}.quick b{font-size:14px;letter-spacing:-.2px;white-space:nowrap}.quick small{font-size:12px;line-height:1.25;padding-right:12px}
+.pill{padding:10px 14px}.pill span{gap:8px;font-size:15px;white-space:nowrap}.pill b{font-size:16px;white-space:nowrap}.pill svg{width:20px;height:20px}
+.ringbox svg{filter:none;overflow:visible}#ring{filter:drop-shadow(0 0 6px #e5191fb0)}
 </style></head><body>
 <header>
  <button class="hb" data-act="go" data-p="settings" aria-label="Menu"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
@@ -298,7 +309,7 @@ async function syncSteps(silent){
 }
 
 /* ---------- renderers ---------- */
-function ringSet(p){$('#ring').style.strokeDashoffset=377*(1-Math.min(1,p))}
+function ringSet(p){const r=$('#ring');r.style.opacity=p>0?1:0;r.style.strokeDashoffset=377*(1-Math.min(1,p))}
 function renderHome(){
  const h=new Date().getHours();$('#hGreet').textContent=(h<12?'Good Morning,':h<18?'Good Afternoon,':'Good Evening,');$('#hName').textContent=D.name||'Athlete';
  const st=D.steps[today()]||0,gl=D.goal.steps;
