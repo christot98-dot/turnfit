@@ -163,18 +163,20 @@ nav button{font-size:11.5px}nav button.on{color:var(--red2)}nav button.on svg{fi
 .linkbtn{background:none;border:0;color:var(--mut);font:inherit;font-size:13px;text-decoration:underline;padding:12px 0 2px}
 .pbtag{font-size:12px;color:var(--ok);border:1px solid #3ecf8e55;border-radius:10px;padding:2px 8px;margin-left:6px;white-space:nowrap}
 #exSel,#pbSel{font-weight:600}
+.notif{position:absolute;top:calc(68px + env(safe-area-inset-top));left:14px;right:14px;max-width:380px;margin:0 auto;z-index:30;background:linear-gradient(145deg,#2a2a2f,#151517);border:1px solid #3d3d44;border-radius:22px;padding:16px;box-shadow:0 18px 44px #000d}
+.ntitle{font-weight:800;font-size:17px;margin-bottom:4px}
 </style></head><body>
 <header>
  <button class="hb" data-act="go" data-p="settings" aria-label="Menu"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
  <img class="logo" src="logo.png" alt="TurnFit">
  <button class="hb" data-act="bell" aria-label="Notifications"><svg class="i" viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.500 2h-15zM10 21h4"/></svg><i class="dot" id="bellDot"></i></button>
 </header>
+<div id="notif" class="notif" style="display:none"></div>
 <main>
 
 <section id="p-home" class="page on">
  <div class="hero"><div class="hero-bg"></div><i class="hero-stripe"></i>
   <div class="hello"><span id="hGreet">Good Evening,</span><b id="hName">Christo</b><i></i></div></div>
- <button class="btn" id="updBar" data-act="doUpdate" style="display:none;width:100%;margin:6px 0 0"></button>
  <div class="card gymcard">
   <div class="sync"><h3>Gym Time</h3><span class="badge" id="gymStatus2">Ready</span></div>
   <div class="timer tsm" id="clock2">00:00:00</div>
@@ -342,10 +344,12 @@ async function checkUpdate(manual){
   const r=await fetch(`https://api.github.com/repos/${REPO}/releases/latest`,{headers:{Accept:'application/vnd.github+json'}});
   if(!r.ok)throw new Error(r.status===404?'no public release found yet':'HTTP '+r.status);
   const j=await r.json(),n=parseInt(String(j.tag_name||'').replace(/\D/g,''))||0,a=(j.assets||[]).find(x=>/\.apk$/.test(x.name));
-  if(a&&n>BUILD){upd={n,url:a.browser_download_url};$('#bellDot').style.display='block';const b=$('#updBar');b.style.display='block';b.textContent=`⬆️ Update available (build ${n}) — tap to install`;if(manual)m.textContent=`Build ${n} is available. Tap the red bar on Home.`}
-  else{$('#bellDot').style.display='none';$('#updBar').style.display='none';if(manual)m.textContent='You have the latest version ✓'}
+  if(a&&n>BUILD){upd={n,url:a.browser_download_url};$('#bellDot').style.display='block';renderNotif();if(manual)m.textContent=`Build ${n} is available. Tap the bell at the top to install it.`}
+  else{upd=null;$('#bellDot').style.display='none';renderNotif();if(manual)m.textContent='You have the latest version ✓'}
  }catch(e){if(manual)m.textContent='Update check failed: '+(e.message||e)}
 }
+function renderNotif(){const el=$('#notif');if(!el)return;
+ el.innerHTML=upd?`<div class="ntitle">⬆️ Update available</div><div class="mut">TurnFit build ${upd.n} is ready. You have build ${BUILD||'dev'}.</div><button class="btn" data-act="doUpdate" style="width:100%;margin-top:12px">Download &amp; install</button>`:`<div class="ntitle">Notifications</div><div class="mut">You're all caught up ✓</div>`}
 /* ---------- Health Connect ---------- */
 const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
 const DIAG=[];
@@ -612,7 +616,7 @@ const A={
  stSave:()=>{const v=parseInt($('#stManual').value);if(isNaN(v))return toast('Enter a number of steps',1);D.steps[today()]=v;save();render();toast('Steps saved ✓')},
  exp:()=>exportData().catch(e=>toast('Export failed: '+e.message,1)),
  imp:()=>$('#impFile').click(),
- bell:()=>{if(upd)A.doUpdate();else toast("You're all caught up ✓")},
+ bell:()=>{const n=$('#notif');const open=n.style.display==='block';n.style.display=open?'none':'block';if(!open){window.scrollTo(0,0);renderNotif()}},
 
  goPB:()=>{go('gym');showSeg('work');setTimeout(()=>$('#pbCard').scrollIntoView({behavior:'smooth',block:'start'}),60)},
  pbToggle:t=>{const id=+t.dataset.id;pbOpen=pbOpen===id?null:id;renderPB()},
@@ -629,9 +633,9 @@ const A={
  pbGoal:t=>{const p=D.pbs[+t.dataset.i],v=prompt('Goal weight for '+p.name+' (kg). Leave empty to clear.',p.goal||'');if(v===null)return;const n=parseFloat(v);p.goal=isNaN(n)?null:n;save();render()},
  pbDel:t=>{const p=D.pbs[+t.dataset.i];if(confirm('Stop tracking '+p.name+' and delete its history?')){D.pbs.splice(+t.dataset.i,1);if(pbOpen===p.id)pbOpen=null;save();render()}},
  chkUpd:()=>{$('#updMsg').textContent='Checking…';return checkUpdate(true)},
- doUpdate:()=>{if(upd&&confirm('Download build '+upd.n+'? When it finishes, tap the file and choose Install. Your data is kept.'))location.href=upd.url}
+ doUpdate:()=>{$('#notif').style.display='none';if(upd&&confirm('Download build '+upd.n+'? When it finishes, tap the file and choose Install. Your data is kept.'))location.href=upd.url}
 };
-document.addEventListener('click',e=>{const t=e.target.closest('[data-act]');if(!t)return;if(t.dataset.act==='sync'&&t.id==='hSync'&&!NATIVE){const v=prompt("Today's steps?");if(v&&!isNaN(+v)){D.steps[today()]=+v;save();render()}return}
+document.addEventListener('click',e=>{const nf=$('#notif');if(nf&&nf.style.display==='block'&&!e.target.closest('#notif')&&!e.target.closest('[data-act=bell]'))nf.style.display='none';const t=e.target.closest('[data-act]');if(!t)return;if(t.dataset.act==='sync'&&t.id==='hSync'&&!NATIVE){const v=prompt("Today's steps?");if(v&&!isNaN(+v)){D.steps[today()]=+v;save();render()}return}
  const f=A[t.dataset.act];if(f)Promise.resolve().then(()=>f(t)).catch(err=>toast('Error: '+err.message,1))});
 $('#viewer').onclick=e=>e.currentTarget.style.display='none';
 $('#phIn').onchange=async e=>{try{for(const f of e.target.files)pend.push(await shrink(f));drawPend()}catch(err){toast(err.message,1)}e.target.value=''};
