@@ -165,6 +165,20 @@ nav button{font-size:11.5px}nav button.on{color:var(--red2)}nav button.on svg{fi
 #exSel,#pbSel{font-weight:600}
 .notif{position:absolute;top:calc(68px + env(safe-area-inset-top));left:14px;right:14px;max-width:380px;margin:0 auto;z-index:30;background:linear-gradient(145deg,#2a2a2f,#151517);border:1px solid #3d3d44;border-radius:22px;padding:16px;box-shadow:0 18px 44px #000d}
 .ntitle{font-weight:800;font-size:17px;margin-bottom:4px}
+
+/* ===== weekly plan ===== */
+.weekstrip{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:12px 0}
+.wd{background:#ffffff0a;border:1px solid var(--line);border-radius:12px;padding:7px 1px;color:#fff;text-align:center;font:inherit;font-size:11px;min-width:0;position:relative}
+.wd .wdn{display:block;color:var(--mut);font-size:10.5px}.wd b{display:block;font-size:10px;letter-spacing:-.2px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wd.today{border-color:var(--red2);background:#e5191f26}.wd.rst b{color:var(--mut);font-weight:600}.wd.ov::after{content:"";position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--red2)}
+.tdbtns{display:flex;gap:8px}.tdbtns .btn{flex:1}
+.todaycard .sync h3{font-size:22px}
+.scope{display:flex;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:3px}.scope button{flex:1;border:0;background:none;color:var(--mut);padding:9px 6px;border-radius:9px;font-weight:700;font-size:13px}.scope button.on{background:var(--red);color:#fff}
+.pbrow.todayrow{box-shadow:inset 3px 0 0 var(--red2);padding-left:8px;margin-left:-8px}
+.pbv.restv{color:var(--mut);font-weight:600}
+.gchips{display:flex;gap:6px;overflow-x:auto;margin:6px 0 4px;padding-bottom:4px;scrollbar-width:none}.gchips .btn{flex:none}
+.pickrow{display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:0;border-bottom:1px solid var(--line);color:#fff;padding:13px 2px;font:inherit;font-size:15px;text-align:left}
+.msel{width:auto!important;padding:6px 8px;font-size:13px;border-radius:10px}
 </style></head><body>
 <header>
  <button class="hb" data-act="go" data-p="settings" aria-label="Menu"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
@@ -177,6 +191,13 @@ nav button{font-size:11.5px}nav button.on{color:var(--red2)}nav button.on svg{fi
 <section id="p-home" class="page on">
  <div class="hero"><div class="hero-bg"></div><i class="hero-stripe"></i>
   <div class="hello"><span id="hGreet">Good Evening,</span><b id="hName">Christo</b><i></i></div></div>
+ <div class="card todaycard">
+  <div class="sync"><h3 id="tdTitle">Today</h3><span class="badge" id="tdTime">⏰ 06:30</span></div>
+  <div class="mut" id="tdSub"></div>
+  <div class="weekstrip" id="wkStrip"></div>
+  <div class="tdbtns" id="tdBtns"></div>
+  <div id="cantPanel" style="display:none;margin-top:12px"></div>
+ </div>
  <div class="card gymcard">
   <div class="sync"><h3>Gym Time</h3><span class="badge" id="gymStatus2">Ready</span></div>
   <div class="timer tsm" id="clock2">00:00:00</div>
@@ -201,7 +222,7 @@ nav button{font-size:11.5px}nav button.on{color:var(--red2)}nav button.on svg{fi
 </section>
 
 <section id="p-gym" class="page">
- <div class="seg"><button class="on" data-act="seg" data-s="time">Gym Time</button><button data-act="seg" data-s="work">Workout</button></div>
+ <div class="seg"><button class="on" data-act="seg" data-s="time">Gym Time</button><button data-act="seg" data-s="work">Workout</button><button data-act="seg" data-s="plan">Plan</button></div>
  <div id="s-time">
   <div class="card"><div class="timer" id="clock">00:00:00</div>
    <button class="big" id="gymBtn" data-act="gymToggle">GYM TIME!</button>
@@ -222,22 +243,40 @@ nav button{font-size:11.5px}nav button.on{color:var(--red2)}nav button.on svg{fi
   </div>
   <div class="card" id="pbCard"><div class="sync"><h3>🏆 Personal Bests</h3><button class="btn sm" data-act="pbNew">+ Add lift</button></div>
    <div id="pbAdd" style="display:none;margin-bottom:10px">
-    <select id="pbSel"></select><input id="pbName" placeholder="New exercise name" style="display:none;margin-top:8px">
+    <select id="pbSel"></select><input id="pbName" placeholder="New exercise name" style="display:none;margin-top:8px"><select id="pbMuscle" style="display:none;margin-top:8px"><option value="chest">Chest</option><option value="back">Back</option><option value="shoulders">Shoulders</option><option value="legs">Legs</option><option value="arms">Arms</option><option value="core">Core</option><option value="other">Other</option></select>
     <div class="row"><label>Goal weight<small>optional</small></label><input type="number" step="any" inputmode="decimal" id="pbGoal" placeholder="kg"></div>
     <div class="row"><label>Current best<small>optional · kg × reps</small></label><div style="display:flex;gap:6px"><input type="number" step="any" inputmode="decimal" id="pbSW" style="width:84px" placeholder="kg"><input type="number" inputmode="numeric" id="pbSR" style="width:70px" placeholder="reps"></div></div>
     <div style="display:flex;gap:8px;margin-top:10px"><button class="btn" data-act="pbSave" style="flex:1">Save lift</button><button class="btn sec" data-act="pbNew" style="flex:1">Cancel</button></div>
    </div>
    <div id="pbList"></div></div>
-  <div class="card"><h2>Current workout</h2><div id="wk"></div>
-   <select id="exSel" style="margin-top:8px"></select>
-   <div id="exNewRow" style="display:none;margin-top:8px">
-    <input id="exNewName" placeholder="New exercise name (e.g. Cable Fly)">
-    <label class="chk"><input type="checkbox" id="exNewPB"> Also track it as a Personal Best</label>
-    <div style="display:flex;gap:8px;margin-top:8px"><button class="btn" data-act="exNewSave" style="flex:1">Save to list &amp; add</button><button class="btn sec" data-act="exNewCancel" style="flex:1">Cancel</button></div>
+  <div class="card" id="wkCard"><div class="sync"><h3>Today's workout</h3><span class="badge" id="wkFocus">—</span></div>
+   <div id="wk"></div>
+   <button class="btn sec" id="repeatBtn" data-act="repeatLast" style="display:none;width:100%;margin-top:10px"></button>
+   <div class="pbh" id="suggTitle">Suggested</div><div class="chips2" id="exSugg"></div>
+   <button class="btn sec" data-act="exMore" style="width:100%;margin-top:12px">＋ Add another exercise</button>
+   <div id="exPicker" style="display:none;margin-top:6px">
+    <div class="gchips" id="exGroups"></div><div id="exPickList"></div>
+    <button class="btn sec sm" data-act="exNewToggle" style="width:100%;margin-top:10px">＋ New exercise</button>
+    <div id="exNewRow" style="display:none;margin-top:10px">
+     <input id="exNewName" placeholder="New exercise name (e.g. Cable Fly)">
+     <select id="exNewMuscle" style="margin-top:8px"><option value="chest">Chest</option><option value="back">Back</option><option value="shoulders">Shoulders</option><option value="legs">Legs</option><option value="arms">Arms</option><option value="core">Core</option><option value="other">Other</option></select>
+     <label class="chk"><input type="checkbox" id="exNewPB"> Also track it as a Personal Best</label>
+     <div style="display:flex;gap:8px;margin-top:8px"><button class="btn" data-act="exNewSave" style="flex:1">Save to list &amp; add</button><button class="btn sec" data-act="exNewCancel" style="flex:1">Cancel</button></div>
+    </div>
    </div>
-   <div style="display:flex;gap:8px;margin-top:8px"><button class="btn" data-act="exAdd" style="flex:1">Add exercise</button><button class="btn sec" data-act="wkFin" style="flex:1">Finish workout</button></div>
+   <button class="btn" data-act="wkFin" style="width:100%;margin-top:14px">Finish workout</button>
    <button class="linkbtn" data-act="exManage">Manage my exercise list</button><div id="exManage" style="display:none"></div></div>
   <div class="card"><h2>Past workouts</h2><div id="wkHist"></div></div>
+ </div>
+ <div id="s-plan" style="display:none">
+  <div class="card"><div class="sync"><button class="rb" data-act="planWk" data-d="-1" aria-label="Previous week">‹</button><h3 id="planWkTitle">This week</h3><button class="rb" data-act="planWk" data-d="1" aria-label="Next week">›</button></div>
+   <div class="mut" style="margin-bottom:6px">Tap a day to change it, swap it, or push your week forward.</div>
+   <div id="planDays"></div></div>
+  <div class="card"><h2>Schedule</h2>
+   <div class="row"><label>Gym time<small>when you usually train</small></label><input type="time" id="cfgTime" data-cfg="gymTime" style="width:130px"></div>
+   <div class="row"><label>Remind me<small>before your gym time</small></label><select id="cfgRemind" data-cfg="remind" style="width:150px"><option value="0">At gym time</option><option value="15">15 min before</option><option value="30">30 min before</option><option value="60">1 hour before</option></select></div>
+   <div class="row"><label>Week starts on</label><select id="cfgWeek" data-cfg="weekStart" style="width:150px"><option value="0">Sunday</option><option value="1">Monday</option></select></div>
+  </div>
  </div>
 </section>
 
@@ -300,7 +339,7 @@ const FIELDS=[
  ['weight','Weight (kg)'],['bf','Body fat %']];
 const BASE=9;
 const unit=k=>k==='weight'?'kg':k==='bf'?'%':'cm';
-let D={sessions:[],active:null,meas:[],steps:{},goal:{visits:4,steps:10000},workouts:[],pbs:[],lib:[],cur:null,rest:90,restEnd:0,restPaused:null,restCustom:[],name:'Christo',lastSync:0};
+let D={sessions:[],active:null,meas:[],steps:{},goal:{visits:4,steps:10000},workouts:[],pbs:[],lib:[],libMuscle:{},plan:{0:'legs',1:'chest',2:'shoulders',3:'back',4:'arms',5:'rest',6:'rest'},planOv:{},gymTime:'06:30',remind:30,weekStart:0,notifOn:true,restNotif:false,cur:null,rest:90,restEnd:0,restPaused:null,restCustom:[],name:'Christo',lastSync:0};
 try{const s=JSON.parse(localStorage.getItem('argosa')||'null');if(s)D=Object.assign(D,s);D.goal=Object.assign({visits:4,steps:10000},D.goal)}catch(e){}
 const save=()=>{try{localStorage.setItem('argosa',JSON.stringify(D))}catch(e){toast('Could not save: '+e.message,1)}};
 const nf=n=>String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,',');
@@ -309,7 +348,7 @@ const dkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const today=()=>dkey(new Date());
 const fmt=ms=>{const s=Math.floor(ms/1e3);return `${pad(Math.floor(s/3600))}:${pad(Math.floor(s%3600/60))}:${pad(s%60)}`};
 const hm=ms=>{const m=Math.round(ms/6e4);return `${Math.floor(m/60)}h ${m%60}m`};
-const weekStart=t=>{const d=new Date(t);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()};
+const weekStart=t=>{const d=new Date(t);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()-(D.weekStart||0)+7)%7));return d.getTime()};
 const tm=t=>new Date(t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 
 /* ---------- build the measurement form FIRST ---------- */
@@ -412,14 +451,14 @@ function renderGym(){
 const lastSets=n=>{for(const w of D.workouts){const x=w.ex.find(e=>e.n===n);if(x&&x.s.length)return x.s}};
 const best=n=>Math.max(0,...D.workouts.flatMap(w=>w.ex.filter(e=>e.n===n).flatMap(e=>e.s.map(s=>s.w))));
 function renderLift(){
- fillExSelect();
+ renderWkUI();
  const c=D.cur;
  $('#wk').innerHTML=c&&c.ex.length?c.ex.map((e,i)=>{const ls=lastSets(e.n),p=e.s[e.s.length-1]||(ls&&ls[0])||{w:'',r:''};
   const tp=tracked(e.n),tb=tp&&pbBest(tp);
   return `<div style="margin:10px 0"><b>${esc(e.n)}</b> ${tp?`<span class="pbtag">🏆 ${tb?'PB '+tb.w+' kg × '+tb.r:'tracked'}</span>`:''} <span class="mut">${ls?'last: '+ls.map(s=>s.w+'×'+s.r).join(', '):''}</span>
   ${e.s.map((s,j)=>`<div class="set"><span class="mut" style="width:22px">${j+1}</span><b>${s.w} kg × ${s.r}</b>${s.w>best(e.n)?'<span class="pr">PR!</span>':''}<button class="btn sec sm" data-act="delSet" data-i="${i}" data-j="${j}" style="margin-left:auto">✕</button></div>`).join('')}
-  <div class="set"><input type="number" step="any" inputmode="decimal" id="w${i}" value="${p.w}" placeholder="kg"><input type="number" inputmode="numeric" id="r${i}" value="${p.r}" placeholder="reps"><button class="btn sm" data-act="addSet" data-i="${i}">+ Set</button></div></div>`}).join(''):'<div class="mut">No exercises yet — add one below.</div>';
- $('#wkHist').innerHTML=D.workouts.slice(0,20).map((w,i)=>`<div class="row" style="align-items:flex-start"><label>${w.date}<small>${w.ex.filter(e=>e.s.length).map(e=>esc(e.n)+': '+e.s.map(s=>s.w+'×'+s.r).join(', ')).join('<br>')}</small></label><button class="btn sec sm" data-act="delWk" data-i="${i}">✕</button></div>`).join('')||'<div class="mut">No workouts yet.</div>';
+  <div class="set"><input type="number" step="any" inputmode="decimal" id="w${i}" value="${p.w}" placeholder="kg"><input type="number" inputmode="numeric" id="r${i}" value="${p.r}" placeholder="reps"><button class="btn sm" data-act="addSet" data-i="${i}">+ Set</button></div></div>`}).join(''):'<div class="mut">No exercises yet. Tap a suggestion below to start.</div>';
+ $('#wkHist').innerHTML=D.workouts.slice(0,20).map((w,i)=>`<div class="row" style="align-items:flex-start"><label>${w.date}${w.focus&&FOCUS[w.focus]?' · '+FOCUS[w.focus].s:''}<small>${w.ex.filter(e=>e.s.length).map(e=>esc(e.n)+': '+e.s.map(s=>s.w+'×'+s.r).join(', ')).join('<br>')}</small></label><button class="btn sec sm" data-act="delWk" data-i="${i}">✕</button></div>`).join('')||'<div class="mut">No workouts yet.</div>';
 }
 function line(pts){
  if(pts.length<2)return '<div class="mut" style="padding:18px 0">Log at least 2 entries to see a chart.</div>';
@@ -465,7 +504,7 @@ function renderSettings(){
  const set=(id,v)=>{const el=$(id);if(document.activeElement!==el)el.value=v};
  $('#verTxt').textContent='TurnFit · Turner Fitness · build '+(BUILD||'dev');set('#setName',D.name||'');set('#setSteps',D.goal.steps);set('#setVisits',D.goal.visits);
 }
-function render(){safe(renderHome);safe(renderGym);safe(renderBody);safe(renderProgress);safe(renderSettings)}
+function render(){safe(renderHome);safe(renderToday);safe(renderPlan);safe(renderGym);safe(renderBody);safe(renderProgress);safe(renderSettings)}
 
 /* ---------- personal bests ---------- */
 const norm=s=>String(s).trim().toLowerCase().replace(/\s+/g,' ');
@@ -508,30 +547,113 @@ function renderHomePBs(){
  else if(!list.length)el.innerHTML='<div class="mut">Log your first PB under Gym Log → Workout.</div><button class="btn" data-act="goPB" style="width:100%;margin-top:10px">Log a PB</button>';
  else el.innerHTML=list.map(p=>{const b=pbBest(p);return `<button class="pbhome" data-act="pbOpenGo" data-id="${p.id}"><span class="pbl">${esc(p.name)}<small>${dshort(b.date)}</small></span><b>${b.w} kg × ${b.r}</b><span class="chev">›</span></button>`}).join('');
 }
-function showSeg(n){$$('.seg button').forEach(b=>b.classList.toggle('on',b.dataset.s===n));$('#s-time').style.display=n==='time'?'':'none';$('#s-work').style.display=n==='work'?'':'none'}
+function showSeg(n){$$('.seg button').forEach(b=>b.classList.toggle('on',b.dataset.s===n));['time','work','plan'].forEach(x=>$('#s-'+x).style.display=n===x?'':'none')}
 
-/* ---------- exercise list (shared by workouts + PBs) ---------- */
-const DEFAULT_LIB=['Bench Press','Incline Bench Press','Dumbbell Press','Squat','Front Squat','Leg Press','Deadlift','Romanian Deadlift','Hip Thrust','Overhead Press','Barbell Row','Lat Pulldown','Pull-up','Weighted Pull-up','Dips','Bicep Curl','Tricep Pushdown','Lateral Raise','Calf Raise'];
-function addToLib(name){name=String(name).trim();if(!name)return null;const k=norm(name);
- const ex=libList().find(x=>norm(x)===k);if(ex)return ex;D.lib.push(name);return name}
+/* ---------- exercise list + muscle groups ---------- */
+const MUSCLES=[['chest','Chest'],['back','Back'],['shoulders','Shoulders'],['legs','Legs'],['arms','Arms'],['core','Core'],['other','Other']];
+const MLABEL=Object.fromEntries(MUSCLES);
+const FOCUS={legs:{l:'Leg day',s:'Legs',g:['legs']},chest:{l:'Chest day',s:'Chest',g:['chest']},shoulders:{l:'Shoulder day',s:'Shoulders',g:['shoulders']},back:{l:'Back day',s:'Back',g:['back']},arms:{l:'Arm day',s:'Arms',g:['arms']},core:{l:'Core day',s:'Core',g:['core']},
+ push:{l:'Push day',s:'Push',g:['chest','shoulders','arms']},pull:{l:'Pull day',s:'Pull',g:['back','arms']},upper:{l:'Upper body day',s:'Upper',g:['chest','back','shoulders','arms']},lower:{l:'Lower body day',s:'Lower',g:['legs','core']},full:{l:'Full body day',s:'Full body',g:['chest','back','shoulders','legs','arms','core']},rest:{l:'Rest day',s:'Rest',g:[]}};
+const DEFAULT_EX={'Bench Press':'chest','Incline Bench Press':'chest','Dumbbell Press':'chest','Chest Fly':'chest','Push-up':'chest','Dips':'chest',
+ 'Deadlift':'back','Barbell Row':'back','Lat Pulldown':'back','Pull-up':'back','Weighted Pull-up':'back','Seated Cable Row':'back',
+ 'Squat':'legs','Front Squat':'legs','Leg Press':'legs','Romanian Deadlift':'legs','Hip Thrust':'legs','Leg Extension':'legs','Leg Curl':'legs','Lunges':'legs','Calf Raise':'legs',
+ 'Overhead Press':'shoulders','Lateral Raise':'shoulders','Rear Delt Fly':'shoulders','Arnold Press':'shoulders','Shrugs':'shoulders','Face Pull':'shoulders',
+ 'Bicep Curl':'arms','Hammer Curl':'arms','Preacher Curl':'arms','Tricep Pushdown':'arms','Skull Crusher':'arms',
+ 'Plank':'core','Hanging Leg Raise':'core','Cable Crunch':'core'};
+const DEFAULT_LIB=Object.keys(DEFAULT_EX);
+const DEFAULT_M={};DEFAULT_LIB.forEach(n=>DEFAULT_M[norm(n)]=DEFAULT_EX[n]);
+const muscleOf=n=>D.libMuscle[norm(n)]||DEFAULT_M[norm(n)]||'other';
+function addToLib(name,muscle){name=String(name).trim();if(!name)return null;const k=norm(name);
+ const ex=libList().find(x=>norm(x)===k);
+ if(ex){if(muscle&&!DEFAULT_M[k])D.libMuscle[k]=muscle;return ex}
+ D.lib.push(name);if(muscle)D.libMuscle[k]=muscle;return name}
 function libList(){const m=new Map();const add=n=>{const k=norm(n);if(k&&!m.has(k))m.set(k,String(n).trim())};
  DEFAULT_LIB.forEach(add);D.lib.forEach(add);D.pbs.forEach(p=>add(p.name));return[...m.values()].sort((a,b)=>a.localeCompare(b))}
 const tracked=n=>D.pbs.find(p=>norm(p.name)===norm(n));
-function fillExSelect(){
- const sel=$('#exSel');if(!sel)return;const cur=sel.value;
- const all=libList(),tr=all.filter(n=>tracked(n)),rest=all.filter(n=>!tracked(n));
- sel.innerHTML='<option value="">Choose an exercise…</option>'+(tr.length?`<optgroup label="🏆 Your PB lifts">${tr.map(n=>`<option value="${esc(n)}">🏆 ${esc(n)}</option>`).join('')}</optgroup>`:'')+`<optgroup label="All exercises">${rest.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')}</optgroup><option value="__new">＋ New exercise…</option>`;
- if(cur&&[...sel.options].some(o=>o.value===cur))sel.value=cur}
 function fillPbSelect(){
  const sel=$('#pbSel');if(!sel)return;
  const free=libList().filter(n=>!tracked(n));
- sel.innerHTML='<option value="">Choose a lift…</option>'+free.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')+'<option value="__new">＋ New exercise…</option>';
- $('#pbName').style.display='none'}
+ sel.innerHTML='<option value="">Choose a lift…</option>'+free.map(n=>`<option value="${esc(n)}">${esc(n)} · ${MLABEL[muscleOf(n)]}</option>`).join('')+'<option value="__new">＋ New exercise…</option>';
+ $('#pbName').style.display='none';$('#pbMuscle').style.display='none'}
 function renderExManage(){
- const el=$('#exManage');if(!el)return;const mine=D.lib.filter(n=>!tracked(n));
- el.innerHTML=mine.length?mine.map((n,i)=>`<div class="hr"><span>${esc(n)}</span><button class="x" data-act="exRemove" data-n="${esc(n)}" aria-label="Remove">✕</button></div>`).join('')+'<div class="mut">Removing only takes it off the dropdown. Past workouts keep it.</div>':(D.lib.length?'<div class="mut">The exercises you added are tracked as Personal Bests. Delete the lift in the PB list to remove it from here.</div>':'<div class="mut">You haven\'t added any of your own exercises yet. Choose “＋ New exercise…” in the dropdown to add one.</div>')}
-// one-time migration: anything typed before the dropdown existed joins the list
+ const el=$('#exManage');if(!el)return;const mine=D.lib.slice().sort((a,b)=>a.localeCompare(b));
+ el.innerHTML=mine.length?mine.map(n=>`<div class="hr"><span>${esc(n)}</span><span style="display:flex;gap:6px;align-items:center"><select class="msel" data-mn="${esc(n)}">${MUSCLES.map(([k,l])=>`<option value="${k}"${muscleOf(n)===k?' selected':''}>${l}</option>`).join('')}</select>${tracked(n)?'':`<button class="x" data-act="exRemove" data-n="${esc(n)}" aria-label="Remove">✕</button>`}</span></div>`).join('')+'<div class="mut">Set the muscle group so each exercise shows up on the right day. Removing only takes it off the list; past workouts keep it.</div>':'<div class="mut">You haven\'t added any exercises of your own yet. Use “＋ New exercise” to add one.</div>'}
+// one-time migration: anything typed before the exercise list existed joins it
 D.workouts.forEach(w=>w.ex.forEach(e=>{const k=norm(e.n);if(!DEFAULT_LIB.some(x=>norm(x)===k)&&!D.lib.some(x=>norm(x)===k))D.lib.push(String(e.n).trim())}));
+
+/* ---------- weekly plan ---------- */
+const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const focusFor=date=>D.planOv[dkey(date)]||D.plan[date.getDay()]||'rest';
+const todayFocus=()=>focusFor(new Date());
+const weekDates=off=>{const ws=new Date(weekStart(Date.now()));ws.setDate(ws.getDate()+off*7);return[...Array(7)].map((_,i)=>{const d=new Date(ws);d.setDate(ws.getDate()+i);return d})};
+function setOv(date,f){const k=dkey(date);if(D.plan[date.getDay()]===f)delete D.planOv[k];else D.planOv[k]=f}
+function planChanged(){save();render()}
+function applyFocus(date,f,scope){if(scope==='regular'){D.plan[date.getDay()]=f;delete D.planOv[dkey(date)]}else setOv(date,f);planChanged()}
+function swapDays(a,b,scope){const fa=focusFor(a),fb=focusFor(b);
+ if(scope==='regular'){D.plan[a.getDay()]=fb;D.plan[b.getDay()]=fa;delete D.planOv[dkey(a)];delete D.planOv[dkey(b)]}else{setOv(a,fb);setOv(b,fa)}planChanged()}
+function pushForward(dates,idx){const S=dates.slice(idx).map(focusFor);if(S[0]==='rest')return null;let dropped=null;
+ const ri=S.findIndex((f,i)=>i>0&&f==='rest');if(ri>0)S.splice(ri,1);else dropped=S.pop();
+ ['rest',...S].forEach((f,i)=>setOv(dates[idx+i],f));planChanged();return dropped}
+let planOff=0,planOpen=null,planScope='week';
+function renderPlan(){
+ const el=$('#planDays');if(!el)return;
+ const dates=weekDates(planOff),fmtD=d=>d.toLocaleDateString([],{day:'numeric',month:'short'});
+ $('#planWkTitle').textContent=planOff===0?'This week':planOff===1?'Next week':planOff===-1?'Last week':fmtD(dates[0])+' – '+fmtD(dates[6]);
+ const tk=today();
+ el.innerHTML=dates.map((d,i)=>{const f=focusFor(d),k=dkey(d),ov=D.planOv[k]!=null,open=planOpen===i,isT=k===tk;let det='';
+  if(open)det=`<div class="pbdet">
+   <div class="pbh">Focus</div><select data-pf="${i}">${Object.entries(FOCUS).map(([kk,v])=>`<option value="${kk}"${f===kk?' selected':''}>${v.s}</option>`).join('')}</select>
+   <div class="pbh">Apply changes to</div><div class="scope"><button class="${planScope==='week'?'on':''}" data-act="planScope" data-s="week">This week only</button><button class="${planScope==='regular'?'on':''}" data-act="planScope" data-s="regular">Every ${DAYS[d.getDay()]}</button></div>
+   <div class="pbh">Swap with</div><div style="display:flex;gap:8px"><select id="ps${i}">${dates.map((o,j)=>j===i?'':`<option value="${j}">${DAYS[o.getDay()]} · ${FOCUS[focusFor(o)].s}</option>`).join('')}</select><button class="btn sm" data-act="planSwap" data-i="${i}">Swap</button></div>
+   <div class="pbact"><button class="btn sec sm" data-act="planRest" data-i="${i}">Make it a rest day</button>${f!=='rest'?`<button class="btn sec sm" data-act="planPush" data-i="${i}">Skip &amp; push week forward</button>`:''}</div>
+   ${ov?`<button class="linkbtn" data-act="planReset" data-i="${i}">Reset to my regular plan</button>`:''}</div>`;
+  return `<div class="pbrow${open?' open':''}${isT?' todayrow':''}"><button class="pbsum" data-act="planDay" data-i="${i}"><span class="pbn">${DAYS[d.getDay()]} <small class="mut">${fmtD(d)}${isT?' · today':''}</small></span><span class="pbv${f==='rest'?' restv':''}">${FOCUS[f].s}${ov?' •':''}</span><span class="chev">›</span></button>${det}</div>`}).join('');
+ $('#cfgTime').value=D.gymTime;$('#cfgRemind').value=String(D.remind);$('#cfgWeek').value=String(D.weekStart||0);
+}
+function renderToday(){
+ const now=new Date(),f=focusFor(now),F=FOCUS[f],k=today(),ov=D.planOv[k]!=null;
+ $('#tdTitle').textContent=f==='rest'?'Rest day 😴':F.l;
+ $('#tdTime').textContent='⏰ '+D.gymTime;
+ $('#tdSub').textContent=f==='rest'?'Recover well. Sleep, eat, repeat.':`Planned for ${D.gymTime}${ov?' · changed this week':''}`;
+ $('#wkStrip').innerHTML=weekDates(0).map(d=>{const ff=focusFor(d),kk=dkey(d);return `<button class="wd${kk===k?' today':''}${ff==='rest'?' rst':''}${D.planOv[kk]!=null?' ov':''}" data-act="goPlan"><span class="wdn">${DAYS[d.getDay()].slice(0,3)}</span><b>${ff==='rest'?'Rest':F_S(ff)}</b></button>`}).join('');
+ $('#tdBtns').innerHTML=f==='rest'?'<button class="btn" data-act="startToday">Train anyway</button><button class="btn sec" data-act="goPlan">Edit plan</button>':'<button class="btn" data-act="startToday">Start workout</button><button class="btn sec" data-act="cantToggle">Can\'t train today?</button>';
+ if($('#cantPanel').style.display==='block')renderCant();
+}
+const F_S=f=>(FOCUS[f]||FOCUS.rest).s;
+function renderCant(){
+ const dates=weekDates(0),now=today(),i=dates.findIndex(d=>dkey(d)===now);
+ $('#cantPanel').innerHTML=`<div class="pbh">Swap today with</div><div style="display:flex;gap:8px"><select id="cantSel">${dates.map((o,j)=>j===i?'':`<option value="${j}">${DAYS[o.getDay()]} · ${F_S(focusFor(o))}</option>`).join('')}</select><button class="btn sm" data-act="cantSwap">Swap</button></div><div class="pbact"><button class="btn sec sm" data-act="cantPush">Push the week forward</button><button class="btn sec sm" data-act="cantSkip">Skip today</button></div>`}
+
+/* ---------- workout screen: day-based suggestions ---------- */
+const curFocus=()=>D.cur&&D.cur.ex.length?(D.cur.focus||'full'):todayFocus();
+function ensureCur(){const f=todayFocus();
+ if(!D.cur)D.cur={id:Date.now(),date:today(),focus:f==='rest'?'full':f,ex:[]};
+ else if(!D.cur.ex.length){D.cur.focus=f==='rest'?'full':f;D.cur.date=today()}
+ return D.cur}
+function suggestions(){
+ const F=FOCUS[curFocus()]||FOCUS.full,groups=F.g.length?F.g:FOCUS.full.g;
+ const inW=new Set((D.cur?D.cur.ex:[]).map(e=>norm(e.n))),freq={};
+ D.workouts.forEach(w=>w.ex.forEach(e=>{freq[norm(e.n)]=(freq[norm(e.n)]||0)+1}));
+ return libList().filter(n=>groups.includes(muscleOf(n))&&!inW.has(norm(n)))
+  .sort((a,b)=>(!!tracked(b)-!!tracked(a))||((freq[norm(b)]||0)-(freq[norm(a)]||0))||a.localeCompare(b)).slice(0,8)}
+let pickG=null;
+function renderPicker(){
+ const box=$('#exPicker');if(!box||box.style.display==='none')return;
+ const F=FOCUS[curFocus()]||FOCUS.full,hasF=F.g.length>0,g=pickG||(hasF?'focus':'all');
+ const chips=[...(hasF?[['focus','Today']]:[]),...MUSCLES,['all','All']];
+ $('#exGroups').innerHTML=chips.map(([k,l])=>`<button class="btn ${g===k?'':'sec'} sm" data-act="pickG" data-g="${k}">${l}</button>`).join('');
+ const inW=new Set((D.cur?D.cur.ex:[]).map(e=>norm(e.n)));
+ const list=libList().filter(n=>!inW.has(norm(n))&&(g==='all'||(g==='focus'?F.g.includes(muscleOf(n)):muscleOf(n)===g)));
+ $('#exPickList').innerHTML=list.length?list.map(n=>`<button class="pickrow" data-act="exQuick" data-n="${esc(n)}"><span>${tracked(n)?'🏆 ':''}${esc(n)}</span><small class="mut">${MLABEL[muscleOf(n)]}</small></button>`).join(''):'<div class="mut" style="padding:8px 0">Nothing here yet. Use “＋ New exercise”.</div>'}
+function renderWkUI(){
+ if(!$('#exSugg'))return;
+ const f=curFocus(),F=FOCUS[f]||FOCUS.full,sg=suggestions();
+ $('#wkFocus').textContent=f==='rest'?'Rest day':F.s;
+ $('#suggTitle').textContent=(!F.g.length)?'Suggested exercises':'Suggested for '+F.l.toLowerCase();
+ $('#exSugg').innerHTML=sg.length?sg.map(n=>`<button class="btn sec sm" data-act="exQuick" data-n="${esc(n)}">${tracked(n)?'🏆 ':''}${esc(n)}</button>`).join(''):'<div class="mut">Everything suggested is already in your workout. Use “＋ Add another exercise” for more.</div>';
+ const last=D.workouts.find(w=>w.focus===f&&w.ex.length),rb=$('#repeatBtn');
+ if(last&&F.g.length&&!(D.cur&&D.cur.ex.length)){rb.style.display='block';rb.textContent=`↻ Repeat last ${F.s.toLowerCase()} workout (${last.ex.length} exercise${last.ex.length>1?'s':''})`}else rb.style.display='none';
+ renderPicker()}
 
 /* ---------- rest timer ---------- */
 let ac,restDone=true;
@@ -586,16 +708,32 @@ const A={
   if(sec<5||sec>3600)return toast('Enter a time between 0:05 and 60:00',1);
   if(![60,90,120,180].includes(sec)){D.restCustom=[sec,...(D.restCustom||[]).filter(n=>n!==sec)].slice(0,2)}
   $('#rcM').value='';$('#rcS').value='';$('#restCustom').style.display='none';startRest(sec)},
- exAdd:()=>{const v=$('#exSel').value;if(!v)return toast('Choose an exercise first',1);if(v==='__new'){$('#exNewRow').style.display='block';return $('#exNewName').focus()}
-  D.cur=D.cur||{id:Date.now(),date:today(),ex:[]};D.cur.ex.push({n:v,s:[]});save();renderLift()},
+ exMore:()=>{const p=$('#exPicker');p.style.display=p.style.display==='none'?'block':'none';pickG=null;renderPicker();if(p.style.display==='block')p.scrollIntoView({behavior:'smooth',block:'nearest'})},
+ pickG:t=>{pickG=t.dataset.g;renderPicker()},
+ exQuick:t=>{const c=ensureCur();c.ex.push({n:t.dataset.n,s:[]});$('#exPicker').style.display='none';save();renderLift()},
+ repeatLast:()=>{const f=curFocus(),last=D.workouts.find(w=>w.focus===f&&w.ex.length);if(!last)return;const c=ensureCur();c.ex=last.ex.map(e=>({n:e.n,s:[]}));save();renderLift();toast('Loaded your last '+F_S(f).toLowerCase()+' workout ✓')},
+ exNewToggle:()=>{const r=$('#exNewRow');r.style.display=r.style.display==='none'?'block':'none';if(r.style.display==='block'){const F=FOCUS[curFocus()]||FOCUS.full;$('#exNewMuscle').value=F.g[0]||'other';$('#exNewName').focus()}},
  exNewSave:()=>{const raw=$('#exNewName').value.trim();if(!raw)return toast('Type the exercise name',1);
-  const n=addToLib(raw);D.cur=D.cur||{id:Date.now(),date:today(),ex:[]};D.cur.ex.push({n,s:[]});
-  const wantPB=$('#exNewPB').checked;$('#exNewName').value='';$('#exNewPB').checked=false;$('#exNewRow').style.display='none';
+  const n=addToLib(raw,$('#exNewMuscle').value),c=ensureCur();c.ex.push({n,s:[]});
+  const wantPB=$('#exNewPB').checked;$('#exNewName').value='';$('#exNewPB').checked=false;$('#exNewRow').style.display='none';$('#exPicker').style.display='none';
   if(wantPB&&!tracked(n))pbCreate(n,NaN,NaN,NaN);
-  save();renderLift();renderPB();$('#exSel').value=n;toast(n+' saved to your list ✓')},
- exNewCancel:()=>{$('#exNewRow').style.display='none';$('#exSel').value=''},
+  save();renderLift();renderPB();toast(n+' saved to your list ✓')},
+ exNewCancel:()=>{$('#exNewRow').style.display='none'},
  exManage:()=>{const e=$('#exManage');e.style.display=e.style.display==='none'?'block':'none';renderExManage()},
- exRemove:t=>{D.lib=D.lib.filter(n=>n!==t.dataset.n);save();fillExSelect();renderExManage()},
+ exRemove:t=>{D.lib=D.lib.filter(n=>n!==t.dataset.n);save();renderLift();renderExManage()},
+ goPlan:()=>{go('gym');showSeg('plan')},
+ startToday:()=>{ensureCur();go('gym');showSeg('work');setTimeout(()=>$('#wkCard').scrollIntoView({behavior:'smooth',block:'start'}),80)},
+ cantToggle:()=>{const p=$('#cantPanel');p.style.display=p.style.display==='block'?'none':'block';if(p.style.display==='block')renderCant()},
+ cantSwap:()=>{const d=weekDates(0),i=d.findIndex(x=>dkey(x)===today()),j=+$('#cantSel').value;swapDays(d[i],d[j],'week');$('#cantPanel').style.display='none';toast('Swapped with '+DAYS[d[j].getDay()]+' ✓')},
+ cantPush:()=>{const d=weekDates(0),i=d.findIndex(x=>dkey(x)===today());const dr=pushForward(d,i);$('#cantPanel').style.display='none';toast(dr&&dr!=='rest'?F_S(dr)+' day dropped off this week. Rest of the week shifted.':'Week pushed forward ✓')},
+ cantSkip:()=>{setOv(new Date(),'rest');$('#cantPanel').style.display='none';planChanged();toast('Today is a rest day. Take care 👍')},
+ planWk:t=>{planOff=Math.max(-1,Math.min(4,planOff+(+t.dataset.d)));planOpen=null;renderPlan()},
+ planDay:t=>{const i=+t.dataset.i;planOpen=planOpen===i?null:i;renderPlan()},
+ planScope:t=>{planScope=t.dataset.s;renderPlan()},
+ planSwap:t=>{const d=weekDates(planOff),i=+t.dataset.i,j=+$('#ps'+i).value;if(isNaN(j))return;swapDays(d[i],d[j],planScope);toast('Swapped ✓')},
+ planRest:t=>{applyFocus(weekDates(planOff)[+t.dataset.i],'rest',planScope);toast('Rest day set ✓')},
+ planPush:t=>{const dr=pushForward(weekDates(planOff),+t.dataset.i);toast(dr&&dr!=='rest'?F_S(dr)+' day dropped off this week. Rest of the week shifted.':'Week pushed forward ✓')},
+ planReset:t=>{delete D.planOv[dkey(weekDates(planOff)[+t.dataset.i])];planChanged()},
  addSet:t=>{const i=+t.dataset.i,w=parseFloat($('#w'+i).value),r=parseInt($('#r'+i).value);if(isNaN(w)||isNaN(r))return toast('Enter kg and reps',1);D.cur.ex[i].s.push({w,r});pbCheck(D.cur.ex[i].n,w,r);save();renderLift();renderPB();renderHomePBs();startRest(D.rest)},
  delSet:t=>{D.cur.ex[+t.dataset.i].s.splice(+t.dataset.j,1);save();renderLift()},
  wkFin:()=>{if(!D.cur||!D.cur.ex.some(e=>e.s.length))return toast('Log at least one set first',1);D.workouts.unshift(D.cur);D.cur=null;D.restEnd=0;save();render();toast('Workout saved ✓')},
@@ -624,9 +762,9 @@ const A={
  pbDelEntry:t=>{const p=D.pbs[+t.dataset.i];if(confirm('Delete this PB entry?')){p.entries.splice(+t.dataset.j,1);save();render()}},
  pbNew:()=>{const a=$('#pbAdd');a.style.display=a.style.display==='none'?'block':'none';if(a.style.display==='block')fillPbSelect()},
  pbSave:()=>{let v=$('#pbSel').value;if(!v)return toast('Choose a lift first',1);
-  if(v==='__new'){v=$('#pbName').value.trim();if(!v)return toast('Type the exercise name',1);v=addToLib(v)}
-  if(pbCreate(v,parseFloat($('#pbGoal').value),parseFloat($('#pbSW').value),parseInt($('#pbSR').value))){['pbName','pbGoal','pbSW','pbSR'].forEach(x=>$('#'+x).value='');$('#pbAdd').style.display='none';fillExSelect()}},
- pbQuick:t=>{if(pbCreate(t.dataset.n,NaN,NaN,NaN))fillExSelect()},
+  if(v==='__new'){v=$('#pbName').value.trim();if(!v)return toast('Type the exercise name',1);v=addToLib(v,$('#pbMuscle').value)}
+  if(pbCreate(v,parseFloat($('#pbGoal').value),parseFloat($('#pbSW').value),parseInt($('#pbSR').value))){['pbName','pbGoal','pbSW','pbSR'].forEach(x=>$('#'+x).value='');$('#pbAdd').style.display='none';renderLift()}},
+ pbQuick:t=>{if(pbCreate(t.dataset.n,NaN,NaN,NaN))renderLift()},
  pbLog:t=>{const i=+t.dataset.i,p=D.pbs[i],w=parseFloat($('#pw'+i).value),r=parseInt($('#pr'+i).value);if(isNaN(w)||isNaN(r))return toast('Enter kg and reps',1);
   const b=pbBest(p);if(!beats(b,w,r)&&!confirm(`That's not above your current PB (${b.w} kg × ${b.r}). Save anyway?`))return;
   p.entries.push({date:today(),w,r});save();render();toast('🏆 PB saved ✓')},
@@ -639,10 +777,13 @@ document.addEventListener('click',e=>{const nf=$('#notif');if(nf&&nf.style.displ
  const f=A[t.dataset.act];if(f)Promise.resolve().then(()=>f(t)).catch(err=>toast('Error: '+err.message,1))});
 $('#viewer').onclick=e=>e.currentTarget.style.display='none';
 $('#phIn').onchange=async e=>{try{for(const f of e.target.files)pend.push(await shrink(f));drawPend()}catch(err){toast(err.message,1)}e.target.value=''};
-$('#exSel').onchange=e=>{if(e.target.value==='__new'){$('#exNewRow').style.display='block';$('#exNewName').focus()}else $('#exNewRow').style.display='none'};
-$('#pbSel').onchange=e=>{const n=$('#pbName');n.style.display=e.target.value==='__new'?'block':'none';if(e.target.value==='__new')n.focus()};
+$('#pbSel').onchange=e=>{const nw=e.target.value==='__new';$('#pbName').style.display=nw?'block':'none';$('#pbMuscle').style.display=nw?'block':'none';if(nw)$('#pbName').focus()};
 $('#mPick').onchange=()=>safe(renderProgress);$('#pbPick').onchange=()=>safe(renderProgress);$('#cA').onchange=$('#cB').onchange=drawCmp;
-document.addEventListener('change',e=>{const k=e.target.dataset&&e.target.dataset.set;if(!k)return;
+document.addEventListener('change',e=>{const ds=e.target.dataset||{};
+ if(ds.cfg){let v=e.target.value;if(ds.cfg==='remind'||ds.cfg==='weekStart')v=+v;D[ds.cfg]=v;planChanged();return}
+ if(ds.pf!==undefined){applyFocus(weekDates(planOff)[+ds.pf],e.target.value,planScope);return}
+ if(ds.mn){D.libMuscle[norm(ds.mn)]=e.target.value;save();renderLift();return}
+ const k=ds.set;if(!k)return;
  if(k==='name')D.name=e.target.value.trim()||'Athlete';else D.goal[k]=Math.max(1,parseInt(e.target.value)||D.goal[k]);save();render()});
 $('#impFile').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());if(!confirm('Replace all current data with this backup?'))return;const ph=j.photos||{};delete j.photos;D=Object.assign(D,j);for(const k in ph)await pput(+k,ph[k]);save();buildForm();render();toast('Backup imported ✓')}catch(err){toast('Invalid backup file',1)}};
 
