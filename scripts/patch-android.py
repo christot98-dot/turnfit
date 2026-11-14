@@ -19,3 +19,9 @@ t=re.sub(r'targetSdkVersion = \d+','targetSdkVersion = 34',t)
 open('android/gradle.properties','a').write('\nandroid.suppressUnsupportedCompileSdk=34\n')
 open(v,'w').write(t)
 print(s)
+
+# --- TurnFit launcher icon + splash screen ---
+import shutil
+shutil.copytree('android-res','android/app/src/main/res',dirs_exist_ok=True)
+bg='android/app/src/main/res/values/ic_launcher_background.xml'
+open(bg,'w').write('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#09090B</color>\n</resources>\n')
