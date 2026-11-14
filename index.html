@@ -133,6 +133,24 @@ nav button{font-size:11.5px}nav button.on{color:var(--red2)}nav button.on svg{fi
 .rest h2{display:none}.rest .t{font-size:30px;min-width:84px;line-height:1}
 .rest .chips{flex:1;margin:0;gap:5px}.rest .chips button{padding:8px 0;font-size:13px;border-radius:12px}
 .rest>button{margin:0!important;width:auto!important;padding:8px 12px;font-size:13px}
+
+/* ===== PB list (accordion) ===== */
+.pbrow{border-bottom:1px solid var(--line)}.pbrow:last-child{border:0}
+.pbsum{width:100%;display:flex;align-items:center;gap:10px;background:none;border:0;color:#fff;padding:16px 2px;text-align:left;font:inherit}
+.pbn{flex:1;min-width:0;font-size:17px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pbv{font-size:18px;font-weight:800;white-space:nowrap}
+.chev{color:var(--mut);font-size:24px;line-height:1;transition:transform .2s}.pbrow.open .chev{transform:rotate(90deg);color:var(--red2)}
+.pbrow.open .pbsum{padding-bottom:8px}
+.pbdet{padding:0 2px 16px}
+.kv{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:14px;color:#b9b9c3;border-bottom:1px dashed #ffffff12}.kv b{color:#fff}.kv b.up{color:var(--ok)}
+.pbdet .bar{margin:8px 0 2px}
+.pbh{margin:14px 0 4px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--red2);font-weight:800}
+.hr{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;font-size:14px;color:#c9c9d1}.hr b{color:#fff}
+.hr span:nth-child(2){margin-left:auto;text-align:right;white-space:nowrap}.hr .x{background:none;border:0;color:var(--mut);font-size:15px;padding:4px 6px}
+.auto{font-style:normal;font-size:11px;color:var(--ok);border:1px solid #3ecf8e55;border-radius:8px;padding:1px 6px;margin-left:4px}
+.pbact{display:flex;gap:8px;margin-top:12px}.pbact .btn{flex:1}
+.pbhome{width:100%;display:flex;align-items:center;gap:10px;background:none;border:0;border-bottom:1px solid var(--line);color:#fff;font:inherit;text-align:left;padding:13px 2px}
+.pbhome:last-child{border:0}.pbl{flex:1;min-width:0;font-weight:700;font-size:16px}.pbl small{display:block;color:var(--mut);font-weight:400;font-size:12px}.pbhome b{font-size:18px;white-space:nowrap}
 </style></head><body>
 <header>
  <button class="hb" data-act="go" data-p="settings" aria-label="Menu"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
@@ -436,22 +454,34 @@ function pbCheck(name,w,r){for(const p of D.pbs)if(norm(p.name)===norm(name)&&be
 function pbCreate(name,goal,w,r){name=name.trim();if(!name){toast('Type a lift name first',1);return false}
  if(D.pbs.some(p=>norm(p.name)===norm(name))){toast('You already track '+name,1);return false}
  const p={id:Date.now(),name,goal:isNaN(goal)?null:goal,entries:[]};if(!isNaN(w)&&!isNaN(r))p.entries.push({date:today(),w,r});
- pbBackfill(p);D.pbs.push(p);save();render();toast(name+' added ✓');return true}
+ pbBackfill(p);D.pbs.push(p);if(!p.entries.length)pbOpen=p.id;save();render();toast(name+' added ✓');return true}
+let pbOpen=null;
+const dlong=d=>new Date(d+'T12:00:00').toLocaleDateString([],{day:'numeric',month:'short',year:'numeric'});
 function renderPB(){
  const el=$('#pbList');if(!el)return;
  if(!D.pbs.length){el.innerHTML=`<div class="mut">Track the lifts you care about. Tap one to start, or use + Add lift:</div><div class="chips2">${['Bench Press','Squat','Deadlift','Overhead Press'].map(n=>`<button class="btn sec sm" data-act="pbQuick" data-n="${n}">+ ${n}</button>`).join('')}</div>`;return}
- el.innerHTML=D.pbs.map((p,i)=>{const b=pbBest(p),f=p.entries.slice().sort((x,y)=>x.date<y.date?-1:1)[0],pct=p.goal&&b?Math.min(100,Math.round(b.w/p.goal*100)):0;
-  return `<div class="pbitem"><div class="pbhead"><b>${esc(p.name)}</b><span><button class="btn sec sm" data-act="pbGoal" data-i="${i}">🎯</button> <button class="btn sec sm" data-act="pbDel" data-i="${i}">✕</button></span></div>
-  ${b?`<div class="pbval"><b>${b.w}</b> kg × ${b.r}<span class="mut"> · ≈ ${Math.round(e1rm(b.w,b.r))} kg 1RM · ${dshort(b.date)}</span></div>${p.entries.length>1?`<div class="d up">↑ ${+(b.w-f.w).toFixed(1)} kg since ${dshort(f.date)}</div>`:''}`:'<div class="mut">No PB logged yet — add your first below.</div>'}
-  ${p.goal?`<div class="mut" style="margin-top:6px">Goal ${p.goal} kg · ${pct}%</div><div class="bar"><i style="width:${pct}%"></i></div>`:''}
-  <div class="set"><input type="number" step="any" inputmode="decimal" id="pw${i}" placeholder="kg" value="${b?b.w:''}"><input type="number" inputmode="numeric" id="pr${i}" placeholder="reps" value="${b?b.r:''}"><button class="btn sm" data-act="pbLog" data-i="${i}">Log PB</button></div></div>`}).join('');
+ el.innerHTML=D.pbs.map((p,i)=>{
+  const b=pbBest(p),open=pbOpen===p.id;
+  let det='';
+  if(open){
+   const hist=p.entries.map((e,idx)=>({e,idx})).sort((x,y)=>x.e.date<y.e.date?1:x.e.date>y.e.date?-1:y.idx-x.idx);
+   const first=hist[hist.length-1],pct=p.goal&&b?Math.min(100,Math.round(b.w/p.goal*100)):0;
+   det=`<div class="pbdet">
+    ${b?`<div class="kv"><span>Best set</span><b>${b.w} kg × ${b.r}</b></div><div class="kv"><span>Set on</span><b>${dlong(b.date)}</b></div><div class="kv"><span>Estimated 1RM</span><b>${Math.round(e1rm(b.w,b.r))} kg</b></div>${p.entries.length>1?`<div class="kv"><span>Since first PB</span><b class="up">↑ ${+(b.w-first.e.w).toFixed(1)} kg</b></div>`:''}`:'<div class="mut">No PB logged yet. Add your first below.</div>'}
+    <div class="kv"><span>Goal</span><b>${p.goal?p.goal+' kg · '+pct+'%':'not set'}</b></div>${p.goal?`<div class="bar"><i style="width:${pct}%"></i></div>`:''}
+    ${hist.length?`<div class="pbh">History</div>${hist.slice(0,8).map(h=>`<div class="hr"><span>${dlong(h.e.date)}</span><span><b>${h.e.w} kg × ${h.e.r}</b>${h.e.auto?' <i class="auto">workout</i>':''}</span><button class="x" data-act="pbDelEntry" data-i="${i}" data-j="${h.idx}" aria-label="Delete entry">✕</button></div>`).join('')}${hist.length>8?`<div class="mut">+ ${hist.length-8} older</div>`:''}`:''}
+    <div class="pbh">Log a new PB</div>
+    <div class="set"><input type="number" step="any" inputmode="decimal" id="pw${i}" placeholder="kg" value="${b?b.w:''}"><input type="number" inputmode="numeric" id="pr${i}" placeholder="reps" value="${b?b.r:''}"><button class="btn sm" data-act="pbLog" data-i="${i}">Log PB</button></div>
+    <div class="pbact"><button class="btn sec sm" data-act="pbGoal" data-i="${i}">🎯 ${p.goal?'Change goal':'Set goal'}</button><button class="btn sec sm" data-act="pbDel" data-i="${i}">Delete lift</button></div>
+   </div>`}
+  return `<div class="pbrow${open?' open':''}"><button class="pbsum" data-act="pbToggle" data-id="${p.id}"><span class="pbn">${esc(p.name)}</span><span class="pbv">${b?b.w+' kg × '+b.r:'—'}</span><span class="chev">›</span></button>${det}</div>`}).join('');
 }
 function renderHomePBs(){
  const el=$('#hPBs');
  const list=D.pbs.filter(p=>p.entries.length).sort((a,b)=>pbBest(b).date>pbBest(a).date?1:-1).slice(0,4);
  if(!D.pbs.length)el.innerHTML='<div class="mut">Track your big lifts: bench, squat, deadlift…</div><button class="btn" data-act="goPB" style="width:100%;margin-top:10px">+ Add your first PB</button>';
  else if(!list.length)el.innerHTML='<div class="mut">Log your first PB under Gym Log → Workout.</div><button class="btn" data-act="goPB" style="width:100%;margin-top:10px">Log a PB</button>';
- else el.innerHTML=list.map(p=>{const b=pbBest(p);return `<div class="row"><label>${esc(p.name)}<small>${dshort(b.date)} · ≈ ${Math.round(e1rm(b.w,b.r))} kg 1RM</small></label><b style="font-size:20px;white-space:nowrap">${b.w} kg × ${b.r}</b></div>`}).join('');
+ else el.innerHTML=list.map(p=>{const b=pbBest(p);return `<button class="pbhome" data-act="pbOpenGo" data-id="${p.id}"><span class="pbl">${esc(p.name)}<small>${dshort(b.date)}</small></span><b>${b.w} kg × ${b.r}</b><span class="chev">›</span></button>`}).join('');
 }
 function showSeg(n){$$('.seg button').forEach(b=>b.classList.toggle('on',b.dataset.s===n));$('#s-time').style.display=n==='time'?'':'none';$('#s-work').style.display=n==='work'?'':'none'}
 
@@ -507,6 +537,9 @@ const A={
  bell:()=>{if(upd)A.doUpdate();else toast("You're all caught up ✓")},
 
  goPB:()=>{go('gym');showSeg('work');setTimeout(()=>$('#pbCard').scrollIntoView({behavior:'smooth',block:'start'}),60)},
+ pbToggle:t=>{const id=+t.dataset.id;pbOpen=pbOpen===id?null:id;renderPB()},
+ pbOpenGo:t=>{pbOpen=+t.dataset.id;A.goPB();renderPB()},
+ pbDelEntry:t=>{const p=D.pbs[+t.dataset.i];if(confirm('Delete this PB entry?')){p.entries.splice(+t.dataset.j,1);save();render()}},
  pbNew:()=>{const a=$('#pbAdd');a.style.display=a.style.display==='none'?'block':'none'},
  pbSave:()=>{if(pbCreate($('#pbName').value,parseFloat($('#pbGoal').value),parseFloat($('#pbSW').value),parseInt($('#pbSR').value))){['pbName','pbGoal','pbSW','pbSR'].forEach(x=>$('#'+x).value='');$('#pbAdd').style.display='none'}},
  pbQuick:t=>pbCreate(t.dataset.n,NaN,NaN,NaN),
@@ -514,7 +547,7 @@ const A={
   const b=pbBest(p);if(!beats(b,w,r)&&!confirm(`That's not above your current PB (${b.w} kg × ${b.r}). Save anyway?`))return;
   p.entries.push({date:today(),w,r});save();render();toast('🏆 PB saved ✓')},
  pbGoal:t=>{const p=D.pbs[+t.dataset.i],v=prompt('Goal weight for '+p.name+' (kg). Leave empty to clear.',p.goal||'');if(v===null)return;const n=parseFloat(v);p.goal=isNaN(n)?null:n;save();render()},
- pbDel:t=>{const p=D.pbs[+t.dataset.i];if(confirm('Stop tracking '+p.name+' and delete its history?')){D.pbs.splice(+t.dataset.i,1);save();render()}},
+ pbDel:t=>{const p=D.pbs[+t.dataset.i];if(confirm('Stop tracking '+p.name+' and delete its history?')){D.pbs.splice(+t.dataset.i,1);if(pbOpen===p.id)pbOpen=null;save();render()}},
  chkUpd:()=>{$('#updMsg').textContent='Checking…';return checkUpdate(true)},
  doUpdate:()=>{if(upd&&confirm('Download build '+upd.n+'? When it finishes, tap the file and choose Install. Your data is kept.'))location.href=upd.url}
 };
