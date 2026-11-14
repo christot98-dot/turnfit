@@ -310,8 +310,15 @@ async function checkUpdate(manual){
 }
 /* ---------- Health Connect ---------- */
 const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
-const plug=n=>{try{return NATIVE?Capacitor.registerPlugin(n):null}catch(e){return null}};
+const DIAG=[];
+const plug=n=>{if(!NATIVE)return null;let p=null;
+ try{if(Capacitor.Plugins&&Capacitor.Plugins[n])p=Capacitor.Plugins[n]}catch(e){DIAG.push('Plugins.'+n+': '+e.message)}
+ if(!p){try{if(typeof Capacitor.registerPlugin==='function')p=Capacitor.registerPlugin(n);else DIAG.push('registerPlugin missing')}catch(e){DIAG.push('registerPlugin '+n+': '+e.message)}}
+ return p||null};
 const HC=plug('HealthConnect');
+if(NATIVE){try{DIAG.push('Capacitor keys: '+Object.keys(Capacitor).join(','));DIAG.push('Plugins: '+Object.keys(Capacitor.Plugins||{}).join(','))}catch(e){}
+ console.log('TF-DIAG HC='+!!HC+' | '+DIAG.join(' | '));
+ if(HC&&HC.checkAvailability)HC.checkAvailability().then(r=>console.log('TF-DIAG availability '+JSON.stringify(r))).catch(e=>console.log('TF-DIAG availability error '+(e&&e.message||e)))}
 async function syncSteps(silent){
  const m=$('#stMsg');
  if(!HC){if(!silent){go('settings');toast('Watch sync works in the Android app. Enter steps by hand here.')}return}
@@ -521,6 +528,7 @@ document.addEventListener('change',e=>{const k=e.target.dataset&&e.target.datase
 $('#impFile').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());if(!confirm('Replace all current data with this backup?'))return;const ph=j.photos||{};delete j.photos;D=Object.assign(D,j);for(const k in ph)await pput(+k,ph[k]);save();buildForm();render();toast('Backup imported ✓')}catch(err){toast('Invalid backup file',1)}};
 
 go('home');
+if(NATIVE)$('#stMsg').textContent=HC?'Watch sync is ready. Tap the button above.':'Watch sync not ready: '+DIAG.join(' | ');
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){safe(renderHome);syncSteps(true)}});
 syncSteps(true);if(NATIVE)checkUpdate(false);
 if('serviceWorker' in navigator&&!NATIVE)navigator.serviceWorker.register('sw.js').catch(()=>{});

@@ -6,6 +6,6 @@ sleep 20
 if adb shell pidof com.argosa.fitness >/dev/null; then echo "SMOKE: APP RUNNING"; else echo "SMOKE: APP NOT RUNNING"; fi
 adb logcat -d > logcat.txt
 echo "---- crash lines ----"
-grep -E "FATAL EXCEPTION|AndroidRuntime|Process: com.argosa|Caused by|Uncaught|Capacitor/Console|chromium.*CONSOLE" logcat.txt | head -60
+grep -E "TF-DIAG|FATAL EXCEPTION|AndroidRuntime|Process: com.argosa|Caused by|Uncaught|Capacitor/Console|chromium.*CONSOLE" logcat.txt | head -60
 echo "---- end ----"
 adb shell pidof com.argosa.fitness >/dev/null || exit 1
