@@ -7,7 +7,9 @@ s=s.replace('</application>','''<activity-alias android:name="ViewPermissionUsag
         </activity-alias>
     </application>
     <uses-permission android:name="android.permission.health.READ_STEPS"/>
-    <uses-permission android:name="android.permission.CAMERA"/>''',1)
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>''',1)
 s=s.replace('</activity>','''<intent-filter><action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/></intent-filter>
         </activity>''',1)
 open(p,'w').write(s)

@@ -1,1 +1,12 @@
-{ "appId": "com.argosa.fitness", "appName": "TurnFit", "webDir": "www", "backgroundColor": "#0f1115" }
+{
+  "appId": "com.argosa.fitness",
+  "appName": "TurnFit",
+  "webDir": "www",
+  "backgroundColor": "#0f1115",
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_turnfit",
+      "iconColor": "#E5191F"
+    }
+  }
+}

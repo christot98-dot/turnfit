@@ -179,6 +179,7 @@ nav button{font-size:11.5px}nav button.on{color:var(--red2)}nav button.on svg{fi
 .gchips{display:flex;gap:6px;overflow-x:auto;margin:6px 0 4px;padding-bottom:4px;scrollbar-width:none}.gchips .btn{flex:none}
 .pickrow{display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:0;border-bottom:1px solid var(--line);color:#fff;padding:13px 2px;font:inherit;font-size:15px;text-align:left}
 .msel{width:auto!important;padding:6px 8px;font-size:13px;border-radius:10px}
+input.sw{width:26px!important;height:26px;accent-color:#ff3b30}
 </style></head><body>
 <header>
  <button class="hb" data-act="go" data-p="settings" aria-label="Menu"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
@@ -276,6 +277,10 @@ nav button{font-size:11.5px}nav button.on{color:var(--red2)}nav button.on svg{fi
    <div class="row"><label>Gym time<small>when you usually train</small></label><input type="time" id="cfgTime" data-cfg="gymTime" style="width:130px"></div>
    <div class="row"><label>Remind me<small>before your gym time</small></label><select id="cfgRemind" data-cfg="remind" style="width:150px"><option value="0">At gym time</option><option value="15">15 min before</option><option value="30">30 min before</option><option value="60">1 hour before</option></select></div>
    <div class="row"><label>Week starts on</label><select id="cfgWeek" data-cfg="weekStart" style="width:150px"><option value="0">Sunday</option><option value="1">Monday</option></select></div>
+   <div class="row"><label>Workout reminders<small>a notification on training days</small></label><input type="checkbox" id="cfgNotif" data-cfg="notifOn" class="sw"></div>
+   <div class="row"><label>Also on rest days</label><input type="checkbox" id="cfgRestN" data-cfg="restNotif" class="sw"></div>
+   <div style="display:flex;gap:8px;margin-top:12px"><button class="btn sec" data-act="notifTest" style="flex:1">Send test notification</button><button class="btn sec" data-act="notifEnable" style="flex:1">Enable reminders</button></div>
+   <div class="mut" id="notifMsg" style="margin-top:8px"></div>
   </div>
  </div>
 </section>
@@ -383,12 +388,16 @@ async function checkUpdate(manual){
   const r=await fetch(`https://api.github.com/repos/${REPO}/releases/latest`,{headers:{Accept:'application/vnd.github+json'}});
   if(!r.ok)throw new Error(r.status===404?'no public release found yet':'HTTP '+r.status);
   const j=await r.json(),n=parseInt(String(j.tag_name||'').replace(/\D/g,''))||0,a=(j.assets||[]).find(x=>/\.apk$/.test(x.name));
-  if(a&&n>BUILD){upd={n,url:a.browser_download_url};$('#bellDot').style.display='block';renderNotif();if(manual)m.textContent=`Build ${n} is available. Tap the bell at the top to install it.`}
-  else{upd=null;$('#bellDot').style.display='none';renderNotif();if(manual)m.textContent='You have the latest version ✓'}
+  if(a&&n>BUILD){upd={n,url:a.browser_download_url};renderNotif();if(manual)m.textContent=`Build ${n} is available. Tap the bell at the top to install it.`}
+  else{upd=null;renderNotif();if(manual)m.textContent='You have the latest version ✓'}
  }catch(e){if(manual)m.textContent='Update check failed: '+(e.message||e)}
 }
-function renderNotif(){const el=$('#notif');if(!el)return;
- el.innerHTML=upd?`<div class="ntitle">⬆️ Update available</div><div class="mut">TurnFit build ${upd.n} is ready. You have build ${BUILD||'dev'}.</div><button class="btn" data-act="doUpdate" style="width:100%;margin-top:12px">Download &amp; install</button>`:`<div class="ntitle">Notifications</div><div class="mut">You're all caught up ✓</div>`}
+const needPerm=()=>NATIVE&&D.notifOn&&notifPerm!=='granted'&&notifPerm!=='unknown';
+function updateBell(){const d=$('#bellDot');if(d)d.style.display=(upd||needPerm())?'block':'none'}
+function renderNotif(){const el=$('#notif');if(!el)return;let h='';
+ if(upd)h+=`<div class="nitem"><div class="ntitle">⬆️ Update available</div><div class="mut">TurnFit build ${upd.n} is ready. You have build ${BUILD||'dev'}.</div><button class="btn" data-act="doUpdate" style="width:100%;margin-top:12px">Download &amp; install</button></div>`;
+ if(needPerm())h+=`<div class="nitem"><div class="ntitle">🔔 Reminders are off</div><div class="mut">Allow notifications so TurnFit can remind you on training days.</div><button class="btn" data-act="notifEnable" style="width:100%;margin-top:12px">Enable reminders</button></div>`;
+ el.innerHTML=h||`<div class="ntitle">Notifications</div><div class="mut">You're all caught up ✓</div>`;updateBell()}
 /* ---------- Health Connect ---------- */
 const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
 const DIAG=[];
@@ -400,6 +409,46 @@ const HC=plug('HealthConnect');
 if(NATIVE){try{DIAG.push('Capacitor keys: '+Object.keys(Capacitor).join(','));DIAG.push('Plugins: '+Object.keys(Capacitor.Plugins||{}).join(','))}catch(e){}
  console.log('TF-DIAG HC='+!!HC+' | '+DIAG.join(' | '));
  if(HC&&HC.checkAvailability)HC.checkAvailability().then(r=>console.log('TF-DIAG availability '+JSON.stringify(r))).catch(e=>console.log('TF-DIAG availability error '+(e&&e.message||e)))}
+
+/* ---------- workout reminders (local notifications) ---------- */
+const LN=plug('LocalNotifications');
+let notifPerm=NATIVE?'unknown':'web',remTimer=null;
+const remStatus=t=>{const el=$('#notifMsg');if(el)el.textContent=t};
+async function refreshPerm(){if(!LN)return;try{notifPerm=(await LN.checkPermissions()).display}catch(e){notifPerm='unknown'}}
+async function enableReminders(){
+ if(!LN){toast('Reminders work in the Android app',1);return false}
+ try{let p=await LN.checkPermissions();if(p.display!=='granted')p=await LN.requestPermissions();notifPerm=p.display;
+  if(p.display!=='granted'){remStatus('Notifications are blocked. Open Android Settings → Apps → TurnFit → Notifications and allow them.');toast('Notifications not allowed',1);renderNotif();return false}
+  D.notifOn=true;save();await scheduleReminders(true);renderPlan();renderNotif();return true}catch(e){toast('Could not enable reminders: '+(e.message||e),1);return false}}
+async function scheduleReminders(announce){
+ if(!LN)return;
+ try{
+  await refreshPerm();
+  const pend=await LN.getPending();
+  if(pend.notifications&&pend.notifications.length)await LN.cancel({notifications:pend.notifications.map(n=>({id:n.id}))});
+  if(!D.notifOn){remStatus('Reminders are off.');renderNotif();return}
+  if(notifPerm!=='granted'){remStatus('Allow notifications to get reminders. Tap “Enable reminders”.');renderNotif();return}
+  try{await LN.createChannel({id:'workout',name:'Workout reminders',description:'Daily gym reminders',importance:4,visibility:1,vibration:true})}catch(e){}
+  const [hh,mm]=String(D.gymTime||'06:30').split(':').map(Number),now=Date.now(),items=[];
+  for(let i=0;i<14;i++){const d=new Date();d.setDate(d.getDate()+i);const f=focusFor(d);if(f==='rest'&&!D.restNotif)continue;
+   const at=new Date(d.getFullYear(),d.getMonth(),d.getDate(),hh,mm-(D.remind||0),0);if(+at<=now+5000)continue;
+   const F=FOCUS[f];let body=f==='rest'?'Rest day today. Recover well! 😴':`Good luck with ${F.l.toLowerCase()} today! 💪`;
+   if(f!=='rest'){const pl=D.pbs.filter(p=>F.g.includes(muscleOf(p.name))&&p.entries.length);if(pl.length){const b=pbBest(pl[0]);body+=` ${pl[0].name} PB to beat: ${b.w} kg × ${b.r}.`}}
+   items.push({id:+(''+at.getFullYear()+pad(at.getMonth()+1)+pad(at.getDate())),title:'TurnFit',body,schedule:{at,allowWhileIdle:true},channelId:'workout',smallIcon:'ic_stat_turnfit',iconColor:'#E5191F'})}
+  if(items.length)await LN.schedule({notifications:items});
+  const n=items.length;remStatus(n?`${n} reminder${n>1?'s':''} scheduled for the next 2 weeks (${D.remind?D.remind+' min before':'at'} ${D.gymTime}).`:'No reminders to schedule (the next 2 weeks are all rest days).');
+  console.log('TF-NOTIF scheduled '+n+' perm='+notifPerm);
+  try{const pp=await LN.getPending();console.log('TF-NOTIF pending='+(pp.notifications||[]).length)}catch(e){}
+  renderNotif();if(announce)toast('Reminders on ✓')
+ }catch(e){remStatus('Reminder error: '+(e.message||e));console.log('TF-NOTIF error '+(e.message||e))}}
+function scheduleSoon(){clearTimeout(remTimer);remTimer=setTimeout(()=>{scheduleReminders(false)},400)}
+async function testNotification(){
+ if(!LN)return toast('Reminders work in the Android app',1);
+ try{let p=await LN.checkPermissions();if(p.display!=='granted')p=await LN.requestPermissions();notifPerm=p.display;
+  if(p.display!=='granted'){renderNotif();return toast('Allow notifications first',1)}
+  try{await LN.createChannel({id:'workout',name:'Workout reminders',description:'Daily gym reminders',importance:4,visibility:1,vibration:true})}catch(e){}
+  await LN.schedule({notifications:[{id:1,title:'TurnFit',body:`Test: ${F_S(todayFocus())==='Rest'?'rest day':FOCUS[todayFocus()].l.toLowerCase()} reminders work 💪`,schedule:{at:new Date(Date.now()+5000),allowWhileIdle:true},channelId:'workout',smallIcon:'ic_stat_turnfit',iconColor:'#E5191F'}]});
+  toast('Test notification in 5 seconds. Lock your screen to see it.')}catch(e){toast('Test failed: '+(e.message||e),1)}}
 async function syncSteps(silent){
  const m=$('#stMsg');
  if(!HC){if(!silent){go('settings');toast('Watch sync works in the Android app. Enter steps by hand here.')}return}
@@ -587,7 +636,7 @@ const focusFor=date=>D.planOv[dkey(date)]||D.plan[date.getDay()]||'rest';
 const todayFocus=()=>focusFor(new Date());
 const weekDates=off=>{const ws=new Date(weekStart(Date.now()));ws.setDate(ws.getDate()+off*7);return[...Array(7)].map((_,i)=>{const d=new Date(ws);d.setDate(ws.getDate()+i);return d})};
 function setOv(date,f){const k=dkey(date);if(D.plan[date.getDay()]===f)delete D.planOv[k];else D.planOv[k]=f}
-function planChanged(){save();render()}
+function planChanged(){save();render();scheduleSoon()}
 function applyFocus(date,f,scope){if(scope==='regular'){D.plan[date.getDay()]=f;delete D.planOv[dkey(date)]}else setOv(date,f);planChanged()}
 function swapDays(a,b,scope){const fa=focusFor(a),fb=focusFor(b);
  if(scope==='regular'){D.plan[a.getDay()]=fb;D.plan[b.getDay()]=fa;delete D.planOv[dkey(a)];delete D.planOv[dkey(b)]}else{setOv(a,fb);setOv(b,fa)}planChanged()}
@@ -608,7 +657,7 @@ function renderPlan(){
    <div class="pbact"><button class="btn sec sm" data-act="planRest" data-i="${i}">Make it a rest day</button>${f!=='rest'?`<button class="btn sec sm" data-act="planPush" data-i="${i}">Skip &amp; push week forward</button>`:''}</div>
    ${ov?`<button class="linkbtn" data-act="planReset" data-i="${i}">Reset to my regular plan</button>`:''}</div>`;
   return `<div class="pbrow${open?' open':''}${isT?' todayrow':''}"><button class="pbsum" data-act="planDay" data-i="${i}"><span class="pbn">${DAYS[d.getDay()]} <small class="mut">${fmtD(d)}${isT?' · today':''}</small></span><span class="pbv${f==='rest'?' restv':''}">${FOCUS[f].s}${ov?' •':''}</span><span class="chev">›</span></button>${det}</div>`}).join('');
- $('#cfgTime').value=D.gymTime;$('#cfgRemind').value=String(D.remind);$('#cfgWeek').value=String(D.weekStart||0);
+ $('#cfgNotif').checked=!!D.notifOn;$('#cfgRestN').checked=!!D.restNotif;$('#cfgTime').value=D.gymTime;$('#cfgRemind').value=String(D.remind);$('#cfgWeek').value=String(D.weekStart||0);
 }
 function renderToday(){
  const now=new Date(),f=focusFor(now),F=FOCUS[f],k=today(),ov=D.planOv[k]!=null;
@@ -722,6 +771,8 @@ const A={
  exManage:()=>{const e=$('#exManage');e.style.display=e.style.display==='none'?'block':'none';renderExManage()},
  exRemove:t=>{D.lib=D.lib.filter(n=>n!==t.dataset.n);save();renderLift();renderExManage()},
  goPlan:()=>{go('gym');showSeg('plan')},
+ notifEnable:()=>enableReminders(),
+ notifTest:()=>testNotification(),
  startToday:()=>{ensureCur();go('gym');showSeg('work');setTimeout(()=>$('#wkCard').scrollIntoView({behavior:'smooth',block:'start'}),80)},
  cantToggle:()=>{const p=$('#cantPanel');p.style.display=p.style.display==='block'?'none':'block';if(p.style.display==='block')renderCant()},
  cantSwap:()=>{const d=weekDates(0),i=d.findIndex(x=>dkey(x)===today()),j=+$('#cantSel').value;swapDays(d[i],d[j],'week');$('#cantPanel').style.display='none';toast('Swapped with '+DAYS[d[j].getDay()]+' ✓')},
@@ -780,7 +831,7 @@ $('#phIn').onchange=async e=>{try{for(const f of e.target.files)pend.push(await 
 $('#pbSel').onchange=e=>{const nw=e.target.value==='__new';$('#pbName').style.display=nw?'block':'none';$('#pbMuscle').style.display=nw?'block':'none';if(nw)$('#pbName').focus()};
 $('#mPick').onchange=()=>safe(renderProgress);$('#pbPick').onchange=()=>safe(renderProgress);$('#cA').onchange=$('#cB').onchange=drawCmp;
 document.addEventListener('change',e=>{const ds=e.target.dataset||{};
- if(ds.cfg){let v=e.target.value;if(ds.cfg==='remind'||ds.cfg==='weekStart')v=+v;D[ds.cfg]=v;planChanged();return}
+ if(ds.cfg){let v=e.target.type==='checkbox'?e.target.checked:e.target.value;if(ds.cfg==='remind'||ds.cfg==='weekStart')v=+v;D[ds.cfg]=v;if(ds.cfg==='notifOn'&&v){enableReminders();save();render();return}planChanged();return}
  if(ds.pf!==undefined){applyFocus(weekDates(planOff)[+ds.pf],e.target.value,planScope);return}
  if(ds.mn){D.libMuscle[norm(ds.mn)]=e.target.value;save();renderLift();return}
  const k=ds.set;if(!k)return;
@@ -788,8 +839,9 @@ document.addEventListener('change',e=>{const ds=e.target.dataset||{};
 $('#impFile').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());if(!confirm('Replace all current data with this backup?'))return;const ph=j.photos||{};delete j.photos;D=Object.assign(D,j);for(const k in ph)await pput(+k,ph[k]);save();buildForm();render();toast('Backup imported ✓')}catch(err){toast('Invalid backup file',1)}};
 
 go('home');
+if(NATIVE)refreshPerm().then(()=>{renderNotif();scheduleSoon()});else remStatus('Reminders work in the Android app.');
 if(NATIVE)$('#stMsg').textContent=HC?'Watch sync is ready. Tap the button above.':'Watch sync not ready: '+DIAG.join(' | ');
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){safe(renderHome);syncSteps(true)}});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){safe(renderHome);safe(renderToday);syncSteps(true);if(NATIVE)refreshPerm().then(()=>{renderNotif();scheduleSoon()})}});
 syncSteps(true);if(NATIVE)checkUpdate(false);
 if('serviceWorker' in navigator&&!NATIVE)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script></body></html>
