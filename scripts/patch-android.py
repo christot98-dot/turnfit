@@ -25,3 +25,9 @@ import shutil
 shutil.copytree('android-res','android/app/src/main/res',dirs_exist_ok=True)
 bg='android/app/src/main/res/values/ic_launcher_background.xml'
 open(bg,'w').write('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#0A0A0A</color>\n</resources>\n')
+
+# --- black system bars to match the app ---
+sx='android/app/src/main/res/values/styles.xml'
+t=open(sx).read()
+t=t.replace('<item name="android:background">@null</item>','<item name="android:background">@null</item>\n        <item name="android:statusBarColor">#000000</item>\n        <item name="android:navigationBarColor">#000000</item>\n        <item name="android:windowLightStatusBar">false</item>',1)
+open(sx,'w').write(t)
