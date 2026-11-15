@@ -225,6 +225,17 @@ input.sw{width:26px!important;height:26px;accent-color:#ff3b30}
 .xr.xh{background:#ffffff16;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);font-weight:800}
 .xr.sel{box-shadow:inset 3px 0 0 var(--red2);background:#e5191f1a!important}
 .xr b{font-size:17px}
+/* photo viewer */
+#viewer{position:fixed;inset:0;background:#000;z-index:70;display:none;flex-direction:column;align-items:stretch;justify-content:flex-start}
+.vclose{position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px;z-index:5;width:52px;height:52px;border-radius:50%;border:1px solid #ffffff66;background:#000b;color:#fff;font-size:24px;font-weight:700;line-height:1}
+#vTrack{flex:1;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;overscroll-behavior:contain}
+#vTrack::-webkit-scrollbar{display:none}
+.vslide{flex:0 0 100%;width:100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center}
+.vslide img{max-width:100%;max-height:100%;object-fit:contain}
+#vInfo{position:absolute;left:0;right:0;bottom:calc(18px + env(safe-area-inset-bottom));text-align:center;color:#fff;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;text-shadow:0 1px 6px #000}
+#vInfo b{font-size:17px}#vInfo span{font-size:13px;color:#d6d6dc}
+.vdots{display:flex;gap:7px}.vdots i{width:8px;height:8px;border-radius:50%;background:#ffffff55}.vdots i.on{background:#fff}
+.cmpc{position:relative}.cmpc small{position:absolute;left:6px;bottom:6px;background:#000a;color:#fff;border-radius:8px;padding:2px 7px;font-size:11px}
 </style></head><body>
 <header>
  <button class="hb" data-act="go" data-p="settings" aria-label="Menu"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
@@ -359,7 +370,11 @@ input.sw{width:26px!important;height:26px;accent-color:#ff3b30}
  <input id="pkSearch" placeholder="Search, or type a new exercise" autocomplete="off">
  <div id="pkList"></div>
 </div></div>
-<div id="viewer"><img alt=""></div>
+<div id="viewer" style="display:none">
+ <button class="vclose" data-act="vClose" aria-label="Close">✕</button>
+ <div id="vTrack"></div>
+ <div id="vInfo"></div>
+</div>
 <div id="toast"></div>
 
 <script>
@@ -447,7 +462,16 @@ const idb=new Promise(res=>{try{const r=indexedDB.open('argosa-photos',1);r.onup
 const tx=async(m,f)=>{const db=await idb;if(!db)return;return new Promise(r=>{try{const q=f(db.transaction('p',m).objectStore('p'));q.onsuccess=()=>r(q.result);q.onerror=()=>r()}catch(e){r()}})};
 const pget=k=>tx('readonly',s=>s.get(k)),pput=(k,v)=>tx('readwrite',s=>s.put(v,k)),pdel=k=>tx('readwrite',s=>s.delete(k));
 const shrink=f=>new Promise((res,rej)=>{const im=new Image(),u=URL.createObjectURL(f);im.onload=()=>{const m=1000,k=Math.min(1,m/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL('image/jpeg',.75))};im.onerror=()=>rej(new Error('Could not read photo'));im.src=u});
-const view=src=>{$('#viewer img').src=src;$('#viewer').style.display='flex'};
+/* ---- photo viewer: swipe left/right, close with ✕, tap outside, or Back ---- */
+let vItems=[];
+function vUpdate(){const tr=$('#vTrack');if(!tr||!vItems.length)return;const i=Math.max(0,Math.min(vItems.length-1,Math.round(tr.scrollLeft/(tr.clientWidth||1))));
+ const it=vItems[i];$('#vInfo').innerHTML=`<b>${esc(it.label||'')}</b><div class="vdots">${vItems.map((_,j)=>`<i class="${j===i?'on':''}"></i>`).join('')}</div><span>${i+1} / ${vItems.length}${vItems.length>1?' · swipe to compare':''}</span>`}
+function openViewer(items,start){if(!items.length)return;vItems=items;
+ $('#vTrack').innerHTML=items.map(it=>`<div class="vslide" data-vbg="1"><img src="${it.src}" alt=""></div>`).join('');
+ $('#viewer').style.display='flex';const tr=$('#vTrack');tr.scrollLeft=(tr.clientWidth||window.innerWidth)*(start||0);vUpdate();
+ try{history.pushState({tfv:1},'')}catch(e){}}
+function closeViewer(){const v=$('#viewer');if(!v||v.style.display==='none')return;v.style.display='none';$('#vTrack').innerHTML='';vItems=[]}
+function vClose(){const was=$('#viewer').style.display!=='none';closeViewer();if(was&&history.state&&history.state.tfv){try{history.back()}catch(e){}}}
 let pend=[];
 const drawPend=()=>{$('#phPend').innerHTML=pend.map((p,i)=>`<img src="${p}" data-act="phRemove" data-i="${i}">`).join('')};
 
@@ -636,8 +660,11 @@ function buildForm(){
   `<div class="row"><label for="f_${k}">${l}<small>${last(k)!=null?'Last: '+last(k)+' '+unit(k):'&nbsp;'}</small></label><input type="number" step="any" inputmode="decimal" id="f_${k}" placeholder="${unit(k)}"></div>`).join('');
  $('#mPick').innerHTML=FIELDS.map(([k,l])=>`<option value="${k}">${l}</option>`).join('');
  $('#mDate').value=today()}
-async function drawCmp(){const g=async id=>((await pget(+id))||[])[0];const [x,y]=[await g($('#cA').value),await g($('#cB').value)];
- $('#cmp').innerHTML=[x,y].map(p=>p?`<img src="${p}" data-act="viewSrc">`:'<div class="mut">No photo</div>').join('')}
+let cmpItems=[];
+async function drawCmp(){const g=async id=>((await pget(+id))||[])[0];
+ const ids=[$('#cA').value,$('#cB').value],imgs=[await g(ids[0]),await g(ids[1])];
+ const dateOf=id=>{const m=D.meas.find(e=>String(e.id)===String(id));return m?dlong(m.date):''};
+ cmpItems=[];$('#cmp').innerHTML=imgs.map((p,k)=>{if(!p)return '<div class="mut">No photo</div>';cmpItems.push({src:p,label:dateOf(ids[k])});return `<div class="cmpc"><img src="${p}" data-act="cmpView" data-k="${cmpItems.length-1}"><small>${esc(dateOf(ids[k]))}</small></div>`}).join('')}
 function renderMTable(){
  const rows=FIELDS.map(([k,l],i)=>{let cur=null,prev=null;for(let j=D.meas.length-1;j>=0;j--){if(D.meas[j][k]!=null){if(cur==null)cur=D.meas[j][k];else{prev=D.meas[j][k];break}}}return{k,l,cur,prev,main:i<BASE}}).filter(r=>r.main||r.cur!=null);
  const sel=$('#mPick').value;
@@ -921,8 +948,9 @@ const A={
   D.meas.push(e);D.meas.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.id-b.id);save();
   pend=[];drawPend();FIELDS.forEach(([k])=>$('#f_'+k).value='');$('#mNote').value='';buildForm();$('#mCard').style.display='none';$('#mToggleBtn').textContent='＋ Log measurements';render();toast('Entry saved ✓')},
  delMeas:t=>{if(confirm('Delete entry?')){const m=D.meas.splice(+t.dataset.i,1)[0];if(m&&m.id)pdel(m.id);save();buildForm();render()}},
- view:async t=>{const ps=await pget(+t.dataset.id)||[];if(ps[+t.dataset.i])view(ps[+t.dataset.i])},
- viewSrc:t=>view(t.src),
+ view:async t=>{const ps=await pget(+t.dataset.id)||[],m=D.meas.find(e=>String(e.id)===t.dataset.id),lab=m?dlong(m.date):'';if(ps.length)openViewer(ps.map((p,j)=>({src:p,label:lab+(ps.length>1?' · photo '+(j+1):'')})),+t.dataset.i)},
+ cmpView:t=>openViewer(cmpItems,+t.dataset.k),
+ vClose:()=>vClose(),
  /* --- settings --- */
  stSave:()=>{const v=parseInt($('#stManual').value);if(isNaN(v))return toast('Enter a number of steps',1);D.steps[today()]=v;save();render();toast('Steps saved ✓')},
  exp:()=>exportData().catch(e=>toast('Export failed: '+e.message,1)),
@@ -950,8 +978,11 @@ document.addEventListener('change',e=>{const t=e.target,ds=t.dataset||{};
  if(ds.mn){D.libMuscle[norm(ds.mn)]=t.value;save();return}
  const k=ds.set;if(!k)return;
  if(k==='name')D.name=t.value.trim()||'Athlete';else D.goal[k]=Math.max(1,parseInt(t.value)||D.goal[k]);save();render()});
-$('#viewer').onclick=e=>e.currentTarget.style.display='none';
 $('#picker').addEventListener('click',e=>{if(e.target.id==='picker')A.pkClose()});
+$('#vTrack').addEventListener('scroll',vUpdate,{passive:true});
+$('#viewer').addEventListener('click',e=>{if(e.target.id==='viewer'||e.target.id==='vTrack'||e.target.dataset.vbg||e.target.id==='vInfo')vClose()});
+window.addEventListener('popstate',()=>closeViewer());
+document.addEventListener('keydown',e=>{if(e.key==='Escape')vClose()});
 $('#phIn').onchange=async e=>{try{for(const f of e.target.files)pend.push(await shrink(f));drawPend()}catch(err){toast(err.message,1)}e.target.value=''};
 $('#mPick').onchange=()=>safe(renderBody);$('#cA').onchange=$('#cB').onchange=drawCmp;
 $('#impFile').onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text());if(!confirm('Replace all current data with this backup?'))return;const ph=j.photos||{};delete j.photos;D=Object.assign(D,j);normalize();for(const k in ph)await pput(+k,ph[k]);save();buildForm();render();toast('Backup imported ✓')}catch(err){toast('Invalid backup file',1)}};
