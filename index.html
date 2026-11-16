@@ -26,7 +26,7 @@ nav button svg{width:26px;height:26px}nav button.on{color:var(--red2)}
 svg.i{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .hello{padding:14px 4px 0}.hello span{color:#d6d6dc;font-size:22px}.hello b{display:block;font-size:44px;line-height:1.05;font-weight:800;letter-spacing:-.5px}
 .hello i{display:block;width:80px;height:5px;border-radius:3px;background:linear-gradient(90deg,var(--red2),transparent);margin-top:8px}
-.act{display:flex;gap:12px}.ringbox{position:relative;width:132px;height:132px;flex:none}
+.ringbox{position:relative;width:132px;height:132px;flex:none}
 .ringbox svg{width:132px;height:132px;transform:rotate(-90deg)}
 .ringbox .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .ringbox .c b{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}.ringbox .c span{color:var(--mut);font-size:13px}
@@ -182,7 +182,7 @@ nav button{font-size:11.5px}nav button.on{color:var(--red2)}nav button.on svg{fi
 input.sw{width:26px!important;height:26px;accent-color:#ff3b30}
 
 /* ===== v5: simple structure ===== */
-.page.act{padding-top:74px}.page.act .hero{display:none}
+.page.ingym{padding-top:74px}.page.ingym .hero{display:none}
 .pv{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}.pv:last-of-type{border:0}.pv b{color:#d6d6dc;font-weight:600}
 #gymStart{margin-top:14px}.lk{color:var(--red2);text-decoration:underline}
 .exc{padding:14px 0;border-bottom:1px solid var(--line)}.exc:last-child{border:0}
@@ -236,6 +236,8 @@ input.sw{width:26px!important;height:26px;accent-color:#ff3b30}
 #vInfo b{font-size:17px}#vInfo span{font-size:13px;color:#d6d6dc}
 .vdots{display:flex;gap:7px}.vdots i{width:8px;height:8px;border-radius:50%;background:#ffffff55}.vdots i.on{background:#fff}
 .cmpc{position:relative}.cmpc small{position:absolute;left:6px;bottom:6px;background:#000a;color:#fff;border-radius:8px;padding:2px 7px;font-size:11px}
+#gymPill{position:fixed;left:14px;right:14px;bottom:calc(86px + env(safe-area-inset-bottom));z-index:19;max-width:532px;margin:0 auto;align-items:center;justify-content:center;border:0;border-radius:18px;padding:13px 14px;background:linear-gradient(160deg,var(--red2),var(--red));color:#fff;font:inherit;font-weight:800;font-size:14.5px;box-shadow:0 8px 24px #e5191f66}
+body.gymaway{padding-bottom:170px}
 </style></head><body>
 <header>
  <button class="hb" data-act="go" data-p="settings" aria-label="Menu"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
@@ -362,6 +364,7 @@ input.sw{width:26px!important;height:26px;accent-color:#ff3b30}
 </section>
 </main>
 
+<button id="gymPill" data-act="go" data-p="home" style="display:none"></button>
 <nav id="nav"></nav>
 
 <!-- exercise picker (used by Today, Plan and Lifts) -->
@@ -550,7 +553,7 @@ function go(p){$$('.page').forEach(x=>x.classList.toggle('on',x.id==='p-'+p));$$
 function renderToday(){
  const now=new Date(),f=focusFor(now),F=FOCUS[f],k=today(),act=!!D.active;
  const h=now.getHours();$('#hGreet').textContent=(h<12?'Good Morning,':h<18?'Good Afternoon,':'Good Evening,');$('#hName').textContent=D.name||'Athlete';
- $('#p-home').classList.toggle('act',act);
+ $('#p-home').classList.toggle('ingym',act);
  $('#tdIdle').style.display=act?'none':'';$('#tdActive').style.display=act?'':'none';$('#tdLower').style.display=act?'none':'';$('#wkStrip').style.display=act?'none':'';
  if(act){const cf=D.cur&&FOCUS[D.cur.focus];$('#tdTitle').textContent=cf&&D.cur.focus!=='full'?cf.l:'Workout';$('#tdTime').textContent='In the gym 💪';$('#tdSub').textContent='Started '+tm(D.active);renderWk();return}
  const ov=D.planOv[k]!=null||D.timeOv[k]!=null;
@@ -708,7 +711,8 @@ function renderNotif(){const el=$('#notif');if(!el)return;let h='';
  if(upd)h+=`<div class="nitem"><div class="ntitle">⬆️ Update available</div><div class="mut">TurnFit build ${upd.n} is ready. You have build ${BUILD||'dev'}.</div><button class="btn" data-act="doUpdate" style="width:100%;margin-top:12px">Download &amp; install</button></div>`;
  if(needPerm())h+=`<div class="nitem"><div class="ntitle">🔔 Reminders are off</div><div class="mut">Allow notifications so TurnFit can remind you on training days.</div><button class="btn" data-act="notifEnable" style="width:100%;margin-top:12px">Enable reminders</button></div>`;
  el.innerHTML=h||`<div class="ntitle">Notifications</div><div class="mut">You're all caught up ✓</div>`;updateBell()}
-function render(){safe(renderToday);safe(renderPlan);safe(renderLifts);safe(renderBody);safe(renderSettings)}
+function updPill(){const pl=$('#gymPill');if(!pl)return;const cur=$('.page.on'),away=!!D.active&&cur&&cur.id!=='p-home';pl.style.display=away?'flex':'none';document.body.classList.toggle('gymaway',away);if(away)pl.textContent='💪 Workout in progress · '+fmt(Date.now()-D.active)+' · tap to return'}
+function render(){safe(updPill);safe(renderToday);safe(renderPlan);safe(renderLifts);safe(renderBody);safe(renderSettings)}
 
 /* =====================================================================
    EXERCISE PICKER (sheet) – Today, Plan, Lifts
@@ -749,7 +753,7 @@ function drawRest(){
  const customs=(D.restCustom||[]).filter(n=>![60,90,120,180].includes(n));
  const h=[60,90,120,180,...customs].map(n=>`<button class="btn ${n===D.rest?'':'sec'}" data-act="rest" data-n="${n}">${fmtChip(n)}</button>`).join('')+`<button class="btn sec" data-act="restCustomToggle" aria-label="Custom time">＋</button>`;
  if($('#restChips').dataset.h!==h){$('#restChips').innerHTML=h;$('#restChips').dataset.h=h}}
-setInterval(()=>safe(()=>{if(D.active)$('#clock2').textContent=fmt(Date.now()-D.active);drawRest()}),500);
+setInterval(()=>safe(()=>{if(D.active){$('#clock2').textContent=fmt(Date.now()-D.active);updPill()}drawRest()}),500);
 
 /* =====================================================================
    NATIVE: Health Connect steps, updates, reminders, backup
